@@ -9,6 +9,7 @@ import { fortythieves } from './fortythieves';
 import { freecell } from './freecell';
 import { golf } from './golf';
 import { klondike, klondikeDraw1 } from './klondike';
+import { pyramid } from './pyramid';
 import { scorpion } from './scorpion';
 import { spider1, spider2, spider4 } from './spider';
 import { tripeaks } from './tripeaks';
@@ -35,7 +36,8 @@ export const games: readonly AnyGame[] = [
 	toAnyGame(spider2),
 	toAnyGame(spider4),
 	toAnyGame(golf),
-	toAnyGame(tripeaks)
+	toAnyGame(tripeaks),
+	toAnyGame(pyramid)
 ];
 
 export const catalog: readonly GameMeta[] = games.map((g) => g.definition.meta);

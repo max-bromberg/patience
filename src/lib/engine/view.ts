@@ -82,6 +82,12 @@ export interface GamePresenter<S, M> {
 	 * Returns the move to apply, or null.
 	 */
 	tap?(state: S, pileId: string, cardId: string | null): M | null;
+
+	/**
+	 * Card ids the shell should visually emphasize (e.g. a tap-selected card in
+	 * pairing games). Optional; defaults to none.
+	 */
+	highlight?(state: S): readonly string[];
 }
 
 /** A game module bundles its rules and its presentation together. */

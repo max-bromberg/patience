@@ -26,6 +26,7 @@ import { sfx } from './sound';
 export interface TableSource {
 	readonly layout: TableLayout;
 	readonly piles: PileView[];
+	readonly highlighted: readonly string[];
 	grab(fromPileId: string, cardId: string): readonly Card[] | null;
 	dropTargets(fromPileId: string, cardId: string): string[];
 	drop(fromPileId: string, cardId: string, toPileId: string): boolean;
@@ -76,6 +77,11 @@ export class GameController<S, M> {
 
 	get piles(): PileView[] {
 		return this.presenter.piles(this.current);
+	}
+
+	/** Card ids to visually emphasize (selection / hints). */
+	get highlighted(): readonly string[] {
+		return this.presenter.highlight?.(this.current) ?? [];
 	}
 
 	get won(): boolean {

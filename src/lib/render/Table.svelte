@@ -276,6 +276,7 @@
 				class="card-wrap"
 				class:dragging
 				class:snapping={snapping.includes(pc.card.id)}
+				class:highlighted={controller.highlighted.includes(pc.card.id)}
 				data-card-id={pc.card.id}
 				style:transform="translate3d({pc.x + off.x}px, {pc.y + off.y}px, 0)"
 				style:z-index={dragging ? 1000 + pc.z : pc.z}
@@ -315,5 +316,25 @@
 	/* Spring-back uses a slightly springier curve. */
 	.card-wrap.snapping {
 		transition: transform 0.24s cubic-bezier(0.34, 1.4, 0.5, 1);
+	}
+	/* Selection / hint emphasis ring (e.g. Pyramid pairing). */
+	.card-wrap.highlighted :global(.card) {
+		border-radius: var(--card-radius);
+		box-shadow:
+			0 0 0 3px var(--drop-ring),
+			0 0 12px 2px var(--drop-ring);
+		animation: pulse-ring 1s ease-in-out infinite;
+	}
+	@keyframes pulse-ring {
+		50% {
+			box-shadow:
+				0 0 0 3px var(--drop-ring),
+				0 0 18px 5px var(--drop-ring);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.card-wrap.highlighted :global(.card) {
+			animation: none;
+		}
 	}
 </style>
