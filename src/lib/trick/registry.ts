@@ -10,6 +10,7 @@ import type { AiCardGame } from './aigame';
 import { hearts } from './hearts';
 import { spades } from './spades';
 import { ohhell } from './ohhell';
+import { whist } from './whist';
 
 /**
  * A trick-taking catalog entry. Two engine kinds exist: the bespoke Euchre
@@ -99,6 +100,7 @@ export const trickGames: readonly TrickGame[] = [
 	euchre3,
 	ai(hearts),
 	ai(spades),
+	ai(whist),
 	ai(ohhell)
 ];
 

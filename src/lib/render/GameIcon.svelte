@@ -48,6 +48,7 @@
 		euchre3: { motif: 'trick', suit: 'diamonds', badge: '3' },
 		hearts: { motif: 'fan', suit: 'hearts' },
 		spades: { motif: 'fan', suit: 'spades' },
+		whist: { motif: 'double', suit: 'clubs' },
 		ohhell: { motif: 'trick', suit: 'diamonds', badge: '?' }
 	};
 
