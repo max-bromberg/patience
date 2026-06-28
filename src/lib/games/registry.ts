@@ -5,6 +5,7 @@
  */
 
 import type { AnyGame, Game, GameMeta } from '$lib/engine';
+import { freecell } from './freecell';
 import { klondike, klondikeDraw1 } from './klondike';
 
 /**
@@ -17,7 +18,11 @@ function toAnyGame<S, M>(game: Game<S, M>): AnyGame {
 }
 
 /** Ordered catalog. Order here is the order shown on the home grid. */
-export const games: readonly AnyGame[] = [toAnyGame(klondike), toAnyGame(klondikeDraw1)];
+export const games: readonly AnyGame[] = [
+	toAnyGame(klondike),
+	toAnyGame(klondikeDraw1),
+	toAnyGame(freecell)
+];
 
 export const catalog: readonly GameMeta[] = games.map((g) => g.definition.meta);
 

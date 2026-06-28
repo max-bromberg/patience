@@ -45,6 +45,22 @@
 		user-select: none;
 		-webkit-user-select: none;
 		touch-action: none;
+		/* gentle deal-in the first time a card appears (persists across moves
+		   via stable id, so this only plays on initial deal / game load) */
+		animation: deal-in 300ms var(--ease-out) both;
+	}
+
+	@keyframes deal-in {
+		from {
+			opacity: 0;
+			transform: translateY(-7px) scale(0.97);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.card {
+			animation: none;
+		}
 	}
 
 	.inner {
