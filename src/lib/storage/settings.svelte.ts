@@ -1,36 +1,55 @@
 /**
- * Reactive, persisted user settings. Read `settings.sound` in components for
- * live updates; assignments persist to localStorage automatically.
+ * Reactive, persisted user settings. Read `settings.sound` / `settings.theme`
+ * in components for live updates; assignments persist to localStorage.
  */
 
+import { DEFAULT_THEME, isTheme } from '$lib/theme/themes';
 import { readJSON, writeJSON } from './storage';
 
 interface SettingsData {
 	sound: boolean;
+	theme: string;
 }
 
 const KEY = 'settings';
-const DEFAULTS: SettingsData = { sound: true };
+const DEFAULTS: SettingsData = { sound: true, theme: DEFAULT_THEME };
 
 class Settings {
-	#sound = $state(DEFAULTS.sound);
+	#data = $state<SettingsData>(DEFAULTS);
 
 	constructor() {
 		const saved = readJSON<Partial<SettingsData>>(KEY, {});
-		this.#sound = saved.sound ?? DEFAULTS.sound;
+		this.#data = {
+			sound: saved.sound ?? DEFAULTS.sound,
+			theme: saved.theme && isTheme(saved.theme) ? saved.theme : DEFAULTS.theme
+		};
+	}
+
+	#persist(): void {
+		writeJSON(KEY, this.#data);
 	}
 
 	get sound(): boolean {
-		return this.#sound;
+		return this.#data.sound;
 	}
 
 	set sound(value: boolean) {
-		this.#sound = value;
-		writeJSON(KEY, { sound: value } satisfies SettingsData);
+		this.#data = { ...this.#data, sound: value };
+		this.#persist();
 	}
 
 	toggleSound(): void {
-		this.sound = !this.#sound;
+		this.sound = !this.#data.sound;
+	}
+
+	get theme(): string {
+		return this.#data.theme;
+	}
+
+	set theme(value: string) {
+		if (!isTheme(value)) return;
+		this.#data = { ...this.#data, theme: value };
+		this.#persist();
 	}
 }
 

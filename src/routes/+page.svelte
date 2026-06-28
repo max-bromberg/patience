@@ -4,7 +4,9 @@
 	import { dailyFor, type DailyInfo } from '$lib/daily';
 	import type { GameMeta } from '$lib/engine';
 	import { catalog, getGame } from '$lib/games/registry';
+	import { THEMES } from '$lib/theme/themes';
 	import { daily } from '$lib/storage/daily.svelte';
+	import { settings } from '$lib/storage/settings.svelte';
 
 	// Group the catalog by family (e.g. 'builder') for sectioned browsing.
 	// The catalog is a build-time constant, so this is computed once.
@@ -20,6 +22,8 @@
 	const groups = groupByFamily(catalog);
 
 	const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+	let showSettings = $state(false);
 
 	// Daily challenge is date-dependent, so compute it on the client (after mount)
 	// to use the player's local date and avoid a prerender/hydration mismatch:
@@ -49,6 +53,7 @@
 </svelte:head>
 
 <main class="home">
+	<button class="gear" onclick={() => (showSettings = true)} aria-label="Settings">⚙</button>
 	<div class="shell">
 		<header class="hero">
 			<div class="logo" aria-hidden="true">
@@ -102,6 +107,56 @@
 
 		<footer class="foot">More games dealing soon.</footer>
 	</div>
+
+	{#if showSettings}
+		<div
+			class="overlay"
+			role="button"
+			tabindex="-1"
+			onclick={(e) => e.target === e.currentTarget && (showSettings = false)}
+			onkeydown={(e) => e.key === 'Escape' && (showSettings = false)}
+		>
+			<div class="sheet" role="dialog" aria-label="Settings">
+				<h2>Settings</h2>
+
+				<section>
+					<h3>Table theme</h3>
+					<div class="swatches">
+						{#each THEMES as t (t.id)}
+							<button
+								class="swatch"
+								class:selected={settings.theme === t.id}
+								style:background={t.swatch}
+								onclick={() => (settings.theme = t.id)}
+								aria-label={t.name}
+								aria-pressed={settings.theme === t.id}
+							>
+								{#if settings.theme === t.id}<span class="check">✓</span>{/if}
+							</button>
+						{/each}
+					</div>
+				</section>
+
+				<section class="row">
+					<h3>Sound</h3>
+					<button
+						class="toggle"
+						class:on={settings.sound}
+						onclick={() => settings.toggleSound()}
+						role="switch"
+						aria-checked={settings.sound}
+						aria-label="Sound effects"
+					>
+						<span class="knob"></span>
+					</button>
+				</section>
+
+				<div class="sheet-actions">
+					<button class="done" onclick={() => (showSettings = false)}>Done</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </main>
 
 <style>
@@ -329,5 +384,127 @@
 		font-size: 0.85rem;
 		margin-top: 2rem;
 		font-style: italic;
+	}
+
+	.gear {
+		position: fixed;
+		top: calc(0.75rem + env(safe-area-inset-top));
+		right: 0.9rem;
+		z-index: 5;
+		width: 2.4rem;
+		height: 2.4rem;
+		border-radius: 999px;
+		border: none;
+		background: var(--ui-surface);
+		color: var(--ui-text);
+		font-size: 1.1rem;
+		cursor: pointer;
+		line-height: 1;
+	}
+	.gear:hover {
+		background: var(--ui-surface-hover);
+	}
+
+	.overlay {
+		position: fixed;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		padding: 1rem;
+		background: rgba(0, 0, 0, 0.5);
+		z-index: 50;
+	}
+	.sheet {
+		background: var(--card-bg);
+		color: var(--card-ink-black);
+		border-radius: 1rem;
+		padding: 1.5rem 1.6rem;
+		width: 100%;
+		max-width: 26rem;
+		box-shadow: var(--card-shadow-lift);
+		display: grid;
+		gap: 1.1rem;
+	}
+	.sheet h2 {
+		margin: 0;
+		font-size: 1.2rem;
+	}
+	.sheet h3 {
+		margin: 0 0 0.5rem;
+		font-size: 0.8rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: #6a6a72;
+	}
+	.swatches {
+		display: flex;
+		gap: 0.6rem;
+		flex-wrap: wrap;
+	}
+	.swatch {
+		width: 2.6rem;
+		height: 2.6rem;
+		border-radius: 0.7rem;
+		border: 2px solid rgba(0, 0, 0, 0.12);
+		cursor: pointer;
+		display: grid;
+		place-items: center;
+		color: #fff;
+		font-weight: 800;
+		box-shadow: inset 0 -6px 10px rgba(0, 0, 0, 0.18);
+	}
+	.swatch.selected {
+		border-color: var(--card-ink-black);
+		outline: 2px solid var(--card-ink-black);
+		outline-offset: 1px;
+	}
+	.row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.row h3 {
+		margin: 0;
+	}
+	.toggle {
+		width: 3.2rem;
+		height: 1.8rem;
+		border-radius: 999px;
+		border: none;
+		background: #cfcfd6;
+		position: relative;
+		cursor: pointer;
+		transition: background 0.16s var(--ease-out);
+	}
+	.toggle.on {
+		background: var(--felt-1);
+	}
+	.toggle .knob {
+		position: absolute;
+		top: 0.2rem;
+		left: 0.2rem;
+		width: 1.4rem;
+		height: 1.4rem;
+		border-radius: 999px;
+		background: #fff;
+		transition: transform 0.16s var(--ease-out);
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+	}
+	.toggle.on .knob {
+		transform: translateX(1.4rem);
+	}
+	.sheet-actions {
+		display: flex;
+		justify-content: flex-end;
+	}
+	.done {
+		font-family: inherit;
+		background: var(--back-1);
+		color: #fff;
+		font-weight: 700;
+		border: none;
+		border-radius: 999px;
+		padding: 0.5rem 1.2rem;
+		cursor: pointer;
 	}
 </style>

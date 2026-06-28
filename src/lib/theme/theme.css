@@ -56,6 +56,43 @@
 	--ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
+/**
+ * Alternate felt themes. Each only overrides the felt colors (and an accent or
+ * two); `--table-bg` is defined with `var(--felt-*)` so it re-themes for free,
+ * and card faces stay white for legibility on every table. Applied via a
+ * `data-theme` attribute on <html>.
+ */
+:root[data-theme='twilight'] {
+	--felt-1: #6a4aa0;
+	--felt-2: #4a2f82;
+	--felt-3: #341f63;
+	--back-1: #2f8a7e;
+	--back-2: #20695f;
+}
+
+:root[data-theme='midnight'] {
+	--felt-1: #2c3340;
+	--felt-2: #1c212b;
+	--felt-3: #12151c;
+	--drop-ring: #ffd479;
+}
+
+:root[data-theme='ocean'] {
+	--felt-1: #1f7a8c;
+	--felt-2: #155b6b;
+	--felt-3: #0f4350;
+	--back-1: #c9603f;
+	--back-2: #9f4628;
+}
+
+:root[data-theme='crimson'] {
+	--felt-1: #9c3b46;
+	--felt-2: #7a2730;
+	--felt-3: #5c1b22;
+	--back-1: #2f6f8a;
+	--back-2: #214f63;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	:root {
 		--flip-ms: 0ms;
