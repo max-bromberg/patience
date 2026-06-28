@@ -7,7 +7,14 @@
  * This is the ONLY stateful glue the shell needs; everything else stays pure.
  */
 
-import { GameSession, type Card, type Game, type PileView, type TableLayout } from '$lib/engine';
+import {
+	GameSession,
+	type Card,
+	type Game,
+	type PileView,
+	type SessionSnapshot,
+	type TableLayout
+} from '$lib/engine';
 import { sfx } from './sound';
 
 /**
@@ -35,6 +42,23 @@ export class GameController<S, M> {
 		this.session = new GameSession(game.definition, seed);
 		this.presenter = game.presenter;
 		this.current = this.session.state;
+	}
+
+	/** A serializable snapshot (seed + move log) for persistence/resume. */
+	snapshot(): SessionSnapshot<M> {
+		return this.session.snapshot();
+	}
+
+	/**
+	 * Rebuild a controller from a snapshot by replaying its moves. Throws if the
+	 * moves no longer apply (e.g. game rules changed) — callers should fall back
+	 * to a fresh deal.
+	 */
+	static restore<S, M>(game: Game<S, M>, snapshot: SessionSnapshot<M>): GameController<S, M> {
+		const controller = new GameController(game, snapshot.seed);
+		for (const move of snapshot.moves) controller.session.apply(move);
+		controller.sync();
+		return controller;
 	}
 
 	private sync(): void {

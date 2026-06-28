@@ -6,6 +6,7 @@
 	import { GameController, Table } from '$lib/render';
 	import { sfx } from '$lib/render/sound';
 	import { daily } from '$lib/storage/daily.svelte';
+	import { clearProgress, loadProgress, saveProgress } from '$lib/storage/resume';
 	import { settings } from '$lib/storage/settings.svelte';
 
 	const gameId = $derived(page.params.gameId);
@@ -28,10 +29,31 @@
 		return Math.floor(Math.random() * 0x7fffffff);
 	}
 
-	// Fresh controller when the game id or the requested seed changes.
-	let controller = $derived.by(() =>
-		game ? new GameController(game, urlSeed ?? freshSeed()) : null
-	);
+	// Controller for the current game. A `?seed=` always deals that exact seed;
+	// otherwise resume the saved casual game for this id, or deal fresh.
+	let controller = $derived.by(() => {
+		if (!game || gameId === undefined) return null;
+		if (urlSeed !== null) return new GameController(game, urlSeed);
+		const saved = loadProgress(gameId);
+		if (saved) {
+			try {
+				return GameController.restore(game, saved);
+			} catch {
+				clearProgress(gameId);
+			}
+		}
+		return new GameController(game, freshSeed());
+	});
+
+	// Persist the casual game after every change; clear it once won. Reading
+	// moveCount + seed makes this re-run on apply/undo/new-deal.
+	$effect(() => {
+		if (!controller || urlSeed !== null || gameId === undefined) return;
+		const _track = controller.moveCount + controller.seed;
+		void _track;
+		if (controller.won) clearProgress(gameId);
+		else saveProgress(gameId, controller.snapshot());
+	});
 
 	const won = $derived(controller?.won ?? false);
 
@@ -157,6 +179,9 @@
 		gap: 0.5rem;
 		padding: 0.5rem 0.75rem calc(0.5rem);
 		padding-top: calc(0.5rem + env(safe-area-inset-top));
+		/* keep controls above the absolutely-positioned card layer */
+		position: relative;
+		z-index: 6000;
 	}
 	.title {
 		font-weight: 700;
