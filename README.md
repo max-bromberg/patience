@@ -51,6 +51,17 @@ keeps Pages from stripping `_app/` assets.
 
 See `PROPOSAL.md` for the full plan. Phases: **0** scaffold + live deploy ·
 **1** engine core · **2** render/interaction shell · **3** Klondike ·
-**4** catalog/home · **5** second game + polish.
+**4** catalog/home · **5** second game + polish — all complete.
+
+## Games & features
+
+- **Games:** Klondike (draw-3 / draw-1), FreeCell, Yukon, Spider (1 / 2 / 4 suit).
+  Each is a pure module registered in `src/lib/games/registry.ts`.
+- **Daily challenge:** a date-seeded deal everyone shares, with a local streak
+  (`src/lib/daily.ts`, `src/lib/storage/daily.svelte.ts`).
+- **Shareable deals:** any game accepts `?seed=<n>` for a reproducible deal.
+- **Sound:** synthesized via Web Audio (`src/lib/render/sound.ts`), mute toggle
+  persisted in `localStorage`.
+- **How to play:** per-game `howTo` steps + a learn-more link in the player.
 
 Shelved theming ideas live in [`docs/themes-backlog.md`](docs/themes-backlog.md).
