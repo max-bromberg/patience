@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { dateKey, previousKey } from '$lib/daily';
@@ -80,18 +81,48 @@
 
 	const won = $derived(controller?.won ?? false);
 
+	const now = () => (typeof performance !== 'undefined' ? performance.now() : 0);
+
+	// Win-streak celebration toast. Set when a win is recorded; auto-dismisses.
+	let streakToast = $state<{ streak: number; milestone: boolean } | null>(null);
+	let toastTimer: ReturnType<typeof setTimeout> | null = null;
+	function celebrate(id: string) {
+		const streak = stats.forGame(id).streak;
+		if (streak < 2) return;
+		const milestone = streak === 3 || streak === 5 || streak % 10 === 0;
+		streakToast = { streak, milestone };
+		if (toastTimer) clearTimeout(toastTimer);
+		toastTimer = setTimeout(() => (streakToast = null), 3800);
+	}
+
 	// Local stats. Mark the game as last-played when opened, and record one
 	// result per concluded deal/game (guard flags reset when a new game starts).
 	$effect(() => {
 		if (gameId !== undefined) stats.touch(gameId);
 	});
+
+	// Per-deal stopwatch (for solitaire fastest-win records); reset each new deal.
+	let startedAt = $state(0);
+	$effect(() => {
+		void controller?.seed;
+		void euchre;
+		void aiGame;
+		void gameId;
+		startedAt = now();
+		streakToast = null;
+	});
+
 	let solRecorded = false;
 	$effect(() => {
 		if (!controller || gameId === undefined) return;
 		if (controller.won) {
 			if (!solRecorded) {
-				stats.record(gameId, true);
+				stats.record(gameId, true, {
+					moves: controller.moveCount,
+					timeMs: Math.round(now() - startedAt)
+				});
 				solRecorded = true;
+				celebrate(gameId);
 			}
 		} else if (controller.stuck) {
 			if (!solRecorded) {
@@ -105,8 +136,10 @@
 		if (!euchre || gameId === undefined) return;
 		if (euchre.state.phase === 'gameOver') {
 			if (!euchreRecorded) {
-				stats.record(gameId, euchre.state.winner === 0);
+				const win = euchre.state.winner === 0;
+				stats.record(gameId, win);
 				euchreRecorded = true;
+				if (win) celebrate(gameId);
 			}
 		} else euchreRecorded = false;
 	});
@@ -116,8 +149,10 @@
 		const v = aiGame.view;
 		if (v.phase === 'gameOver') {
 			if (!aiRecorded) {
-				stats.record(gameId, v.winnerLabel?.startsWith('You') ?? false);
+				const win = v.winnerLabel?.startsWith('You') ?? false;
+				stats.record(gameId, win);
 				aiRecorded = true;
+				if (win) celebrate(gameId);
 			}
 		} else aiRecorded = false;
 	});
@@ -155,6 +190,36 @@
 		void gameId;
 		void controller?.seed;
 		return stopAuto;
+	});
+
+	/** Deal a fresh game for whichever controller is active. */
+	function newDealActive() {
+		const seed = freshSeed();
+		if (controller) controller.newDeal(seed);
+		else if (euchre) euchre.newDeal(seed);
+		else if (aiGame) aiGame.newDeal(seed);
+	}
+
+	// Keyboard shortcuts: N = new deal (any game), U = undo (solitaire only).
+	onMount(() => {
+		const onKey = (e: KeyboardEvent) => {
+			if (e.metaKey || e.ctrlKey || e.altKey) return;
+			const t = e.target as HTMLElement | null;
+			if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+			const k = e.key.toLowerCase();
+			if (k === 'n') {
+				newDealActive();
+				e.preventDefault();
+			} else if (k === 'u' && controller?.canUndo) {
+				controller.undo();
+				e.preventDefault();
+			}
+		};
+		window.addEventListener('keydown', onKey);
+		return () => {
+			window.removeEventListener('keydown', onKey);
+			if (toastTimer) clearTimeout(toastTimer);
+		};
 	});
 </script>
 
@@ -294,6 +359,16 @@
 		{/if}
 	{/if}
 
+	{#if streakToast}
+		{#if streakToast.milestone}<Confetti />{/if}
+		<div class="streak-toast" class:milestone={streakToast.milestone} role="status">
+			<span class="flame">🔥</span>
+			<span class="streak-text"
+				>{streakToast.streak} wins in a row{streakToast.milestone ? ' — on fire!' : '!'}</span
+			>
+		</div>
+	{/if}
+
 	{#if showHelp && meta?.howTo}
 		<div
 			class="overlay"
@@ -309,6 +384,10 @@
 						<li>{step}</li>
 					{/each}
 				</ul>
+				<p class="shortcuts">
+					Shortcuts: <kbd>N</kbd> new {game ? 'deal' : 'game'}{#if game}
+						· <kbd>U</kbd> undo{/if}
+				</p>
 				<div class="sheet-actions">
 					{#if meta.learnMore}
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- external URL -->
@@ -543,5 +622,64 @@
 	.sheet-actions .btn.ghost {
 		color: var(--card-ink-black);
 		background: rgba(0, 0, 0, 0.06);
+	}
+
+	.shortcuts {
+		margin: 0 0 1rem;
+		font-size: 0.78rem;
+		color: #6a6a72;
+	}
+	.shortcuts kbd {
+		font-family: inherit;
+		font-size: 0.72rem;
+		font-weight: 800;
+		background: rgba(0, 0, 0, 0.08);
+		border-radius: 0.35rem;
+		padding: 0.05rem 0.4rem;
+		border: 1px solid rgba(0, 0, 0, 0.12);
+	}
+
+	/* Win-streak celebration toast */
+	.streak-toast {
+		position: fixed;
+		top: calc(3.5rem + env(safe-area-inset-top));
+		left: 50%;
+		transform: translateX(-50%);
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.55rem 1rem;
+		border-radius: 999px;
+		background: rgba(0, 0, 0, 0.78);
+		color: #fff;
+		font-weight: 800;
+		font-size: 0.95rem;
+		box-shadow: var(--card-shadow-lift);
+		z-index: 5500;
+		animation: toast-pop 0.35s var(--ease-out);
+	}
+	.streak-toast.milestone {
+		background: linear-gradient(110deg, #c8324a, #e8893f);
+		color: #fff;
+	}
+	.streak-toast .flame {
+		font-size: 1.2rem;
+		animation: flame-bob 0.7s ease-in-out infinite alternate;
+	}
+	@keyframes toast-pop {
+		from {
+			opacity: 0;
+			transform: translate(-50%, -0.6rem) scale(0.9);
+		}
+	}
+	@keyframes flame-bob {
+		to {
+			transform: translateY(-2px) scale(1.1);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.streak-toast .flame {
+			animation: none;
+		}
 	}
 </style>

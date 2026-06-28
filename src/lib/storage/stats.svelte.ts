@@ -12,6 +12,14 @@ export interface GameStat {
 	won: number;
 	streak: number; // current consecutive wins
 	best: number; // best win streak
+	bestMoves?: number; // fewest moves to a win (solitaire)
+	bestTimeMs?: number; // fastest win, ms (solitaire)
+}
+
+/** Optional performance metrics for a win (solitaire only). */
+export interface WinMetrics {
+	moves?: number;
+	timeMs?: number;
 }
 
 interface StatsData {
@@ -59,16 +67,27 @@ class StatsStore {
 		return this.totals.played > 0;
 	}
 
-	/** Record a finished game. `won` extends/breaks the win streak. */
-	record(gameId: string, won: boolean): void {
+	/**
+	 * Record a finished game. `won` extends/breaks the win streak. On a win,
+	 * `metrics` updates the fastest-time / fewest-moves records (lower is better).
+	 */
+	record(gameId: string, won: boolean, metrics?: WinMetrics): void {
 		const prev = this.#data.games[gameId] ?? EMPTY;
 		const streak = won ? prev.streak + 1 : 0;
 		const next: GameStat = {
 			played: prev.played + 1,
 			won: prev.won + (won ? 1 : 0),
 			streak,
-			best: Math.max(prev.best, streak)
+			best: Math.max(prev.best, streak),
+			bestMoves: prev.bestMoves,
+			bestTimeMs: prev.bestTimeMs
 		};
+		if (won && metrics) {
+			if (typeof metrics.moves === 'number' && metrics.moves > 0)
+				next.bestMoves = Math.min(prev.bestMoves ?? Infinity, metrics.moves);
+			if (typeof metrics.timeMs === 'number' && metrics.timeMs > 0)
+				next.bestTimeMs = Math.min(prev.bestTimeMs ?? Infinity, metrics.timeMs);
+		}
 		this.#data = {
 			games: { ...this.#data.games, [gameId]: next },
 			lastPlayed: gameId

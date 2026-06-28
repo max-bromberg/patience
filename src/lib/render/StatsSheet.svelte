@@ -17,6 +17,11 @@
 	const totals = $derived(stats.totals);
 
 	const rate = (won: number, played: number) => (played > 0 ? Math.round((won / played) * 100) : 0);
+	function fmtTime(ms: number): string {
+		const s = Math.round(ms / 1000);
+		const m = Math.floor(s / 60);
+		return m > 0 ? `${m}:${String(s % 60).padStart(2, '0')}` : `${s}s`;
+	}
 </script>
 
 <div
@@ -50,6 +55,13 @@
 							<span class="info">
 								<span class="name">{meta.name}</span>
 								<span class="sub">{s.won}/{s.played} won · {rate(s.won, s.played)}%</span>
+								{#if s.bestTimeMs || s.bestMoves}
+									<span class="bests">
+										{#if s.bestTimeMs}⚡ {fmtTime(s.bestTimeMs)}{/if}
+										{#if s.bestTimeMs && s.bestMoves}·{/if}
+										{#if s.bestMoves}🎯 {s.bestMoves} moves{/if}
+									</span>
+								{/if}
 							</span>
 							{#if s.best > 1}
 								<span class="streak" title="Best win streak">🔥 {s.best}</span>
@@ -181,6 +193,11 @@
 	.info .sub {
 		font-size: 0.74rem;
 		color: #6a6a72;
+	}
+	.info .bests {
+		font-size: 0.7rem;
+		color: #8a8a90;
+		font-weight: 600;
 	}
 	.streak {
 		font-size: 0.85rem;
