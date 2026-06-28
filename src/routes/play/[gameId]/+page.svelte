@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import { dateKey, previousKey } from '$lib/daily';
 	import { getGame } from '$lib/games/registry';
 	import { GameController, Table } from '$lib/render';
 	import { sfx } from '$lib/render/sound';
+	import { daily } from '$lib/storage/daily.svelte';
 	import { settings } from '$lib/storage/settings.svelte';
 
 	const gameId = $derived(page.params.gameId);
@@ -12,22 +14,38 @@
 
 	let showHelp = $state(false);
 
-	// Fresh controller whenever the game id changes. Seed picks the deal; the
-	// shuffle itself stays deterministic from that seed.
+	// A `?seed=` makes a deal shareable/reproducible; `?daily=1` marks it as the
+	// day's challenge (so winning the untouched daily deal counts toward a streak).
+	const urlSeed = $derived.by(() => {
+		const raw = page.url.searchParams.get('seed');
+		if (raw === null) return null;
+		const n = Number(raw);
+		return Number.isFinite(n) ? n >>> 0 : null;
+	});
+	const isDaily = $derived(page.url.searchParams.get('daily') === '1');
+
 	function freshSeed(): number {
 		return Math.floor(Math.random() * 0x7fffffff);
 	}
 
-	let controller = $derived.by(() => (game ? new GameController(game, freshSeed()) : null));
+	// Fresh controller when the game id or the requested seed changes.
+	let controller = $derived.by(() =>
+		game ? new GameController(game, urlSeed ?? freshSeed()) : null
+	);
 
 	const won = $derived(controller?.won ?? false);
 
-	// Play the victory fanfare once when a game is won.
+	// On win: fanfare once, and record the daily streak if this is the untouched
+	// daily deal (controller seed still equals the daily seed — a "new deal" breaks it).
 	let celebrated = false;
 	$effect(() => {
 		if (won && !celebrated) {
 			celebrated = true;
 			sfx.win();
+			if (isDaily && controller && controller.seed === urlSeed) {
+				const now = new Date();
+				daily.complete(dateKey(now), previousKey(now));
+			}
 		} else if (!won) {
 			celebrated = false;
 		}
@@ -41,7 +59,10 @@
 <div class="screen">
 	<header class="bar">
 		<a class="btn ghost" href={resolve('/')} aria-label="Back to catalog">‹ Catalog</a>
-		<span class="title">{game?.definition.meta.name ?? 'Game'}</span>
+		<span class="title">
+			{game?.definition.meta.name ?? 'Game'}
+			{#if isDaily}<span class="badge">Daily</span>{/if}
+		</span>
 		<div class="actions">
 			{#if meta?.howTo}
 				<button class="btn icon" onclick={() => (showHelp = true)} aria-label="How to play">
@@ -79,6 +100,9 @@
 			<div class="win" role="status">
 				<div class="win-card">
 					<h2>You won! 🎉</h2>
+					{#if isDaily}
+						<p class="streak">Daily streak: 🔥 {daily.streak}</p>
+					{/if}
 					<button class="btn primary" onclick={() => controller.newDeal(freshSeed())}>
 						Play again
 					</button>
@@ -137,6 +161,24 @@
 	.title {
 		font-weight: 700;
 		font-size: 1.05rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.badge {
+		font-size: 0.65rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		font-weight: 800;
+		padding: 0.1rem 0.4rem;
+		border-radius: 999px;
+		background: var(--back-1);
+		color: #fff;
+	}
+	.streak {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 700;
 	}
 	.actions {
 		margin-left: auto;
@@ -200,6 +242,8 @@
 		place-items: center;
 		background: rgba(0, 0, 0, 0.45);
 		animation: fade 0.3s var(--ease-out);
+		/* above the card layer, whose z-indexes climb into the thousands */
+		z-index: 5000;
 	}
 	.win-card {
 		background: var(--card-bg);
@@ -229,7 +273,7 @@
 		padding: 1rem;
 		background: rgba(0, 0, 0, 0.45);
 		animation: fade 0.2s var(--ease-out);
-		z-index: 10;
+		z-index: 5000;
 	}
 	.sheet {
 		background: var(--card-bg);

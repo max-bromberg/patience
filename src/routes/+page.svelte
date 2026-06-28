@@ -1,7 +1,10 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { dailyFor, type DailyInfo } from '$lib/daily';
 	import type { GameMeta } from '$lib/engine';
-	import { catalog } from '$lib/games/registry';
+	import { catalog, getGame } from '$lib/games/registry';
+	import { daily } from '$lib/storage/daily.svelte';
 
 	// Group the catalog by family (e.g. 'builder') for sectioned browsing.
 	// The catalog is a build-time constant, so this is computed once.
@@ -17,6 +20,27 @@
 	const groups = groupByFamily(catalog);
 
 	const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+	// Daily challenge is date-dependent, so compute it on the client (after mount)
+	// to use the player's local date and avoid a prerender/hydration mismatch:
+	// `mounted` stays false through SSR and the first client render, then flips.
+	let mounted = $state(false);
+	onMount(() => {
+		mounted = true;
+	});
+	const dailyInfo: DailyInfo | null = $derived(
+		mounted
+			? dailyFor(
+					new Date(),
+					catalog.map((m) => m.id)
+				)
+			: null
+	);
+	const dailyMeta = $derived(dailyInfo ? getGame(dailyInfo.gameId)?.definition.meta : undefined);
+	const dailyDone = $derived(dailyInfo ? daily.isCompleted(dailyInfo.key) : false);
+	const dailyHref = $derived(
+		dailyInfo ? `${resolve(`/play/${dailyInfo.gameId}`)}?seed=${dailyInfo.seed}&daily=1` : '#'
+	);
 </script>
 
 <svelte:head>
@@ -33,6 +57,26 @@
 			<h1>Patience</h1>
 			<p class="tagline">A cozy collection of single-player card games.</p>
 		</header>
+
+		{#if dailyInfo && dailyMeta}
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- dailyHref is built with resolve() -->
+			<a class="daily" href={dailyHref}>
+				<div class="daily-main">
+					<span class="kicker">Daily Challenge</span>
+					<span class="daily-game">{dailyMeta.name}</span>
+					<span class="daily-sub">
+						{dailyDone ? 'Done today — play again' : "Today's deal, same for everyone"}
+					</span>
+				</div>
+				<div class="daily-side">
+					{#if daily.streak > 0}
+						<span class="flame">🔥 {daily.streak}</span>
+						<span class="flame-label">day streak</span>
+					{/if}
+					<span class="daily-cta">{dailyDone ? '✓' : 'Play ›'}</span>
+				</div>
+			</a>
+		{/if}
 
 		{#each groups as [family, metas] (family)}
 			<section class="family">
@@ -111,6 +155,63 @@
 		margin: 0.2rem 0 0;
 		color: var(--ui-muted);
 		font-size: clamp(0.95rem, 4vw, 1.1rem);
+	}
+
+	.daily {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 1.25rem;
+		padding: 1rem 1.25rem;
+		border-radius: 1rem;
+		text-decoration: none;
+		color: inherit;
+		background: linear-gradient(120deg, rgba(201, 154, 58, 0.28), rgba(0, 0, 0, 0.25));
+		border: 1px solid rgba(255, 227, 154, 0.3);
+		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+		transition: transform 0.16s var(--ease-out);
+	}
+	.daily:hover {
+		transform: translateY(-2px);
+	}
+	.daily-main {
+		display: grid;
+		gap: 0.15rem;
+	}
+	.kicker {
+		font-size: 0.7rem;
+		text-transform: uppercase;
+		letter-spacing: 0.12em;
+		color: var(--drop-ring);
+		font-weight: 800;
+	}
+	.daily-game {
+		font-size: 1.3rem;
+		font-weight: 800;
+	}
+	.daily-sub {
+		font-size: 0.85rem;
+		color: var(--ui-muted);
+	}
+	.daily-side {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 0.1rem;
+	}
+	.flame {
+		font-size: 1.15rem;
+		font-weight: 800;
+	}
+	.flame-label {
+		font-size: 0.7rem;
+		color: var(--ui-muted);
+	}
+	.daily-cta {
+		margin-top: 0.3rem;
+		font-weight: 700;
+		color: var(--drop-ring);
 	}
 
 	.family h2 {
