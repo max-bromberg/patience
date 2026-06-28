@@ -6,8 +6,10 @@
 
 import type { AnyGame, Game, GameMeta } from '$lib/engine';
 import { freecell } from './freecell';
+import { golf } from './golf';
 import { klondike, klondikeDraw1 } from './klondike';
 import { spider1, spider2, spider4 } from './spider';
+import { tripeaks } from './tripeaks';
 import { yukon } from './yukon';
 
 /**
@@ -27,7 +29,9 @@ export const games: readonly AnyGame[] = [
 	toAnyGame(yukon),
 	toAnyGame(spider1),
 	toAnyGame(spider2),
-	toAnyGame(spider4)
+	toAnyGame(spider4),
+	toAnyGame(golf),
+	toAnyGame(tripeaks)
 ];
 
 export const catalog: readonly GameMeta[] = games.map((g) => g.definition.meta);
