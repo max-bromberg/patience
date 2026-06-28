@@ -7,6 +7,7 @@
 import type { AnyGame, Game, GameMeta } from '$lib/engine';
 import { freecell } from './freecell';
 import { klondike, klondikeDraw1 } from './klondike';
+import { yukon } from './yukon';
 
 /**
  * Erase a game's private S/M to AnyGame. Safe: the shell only ever feeds a
@@ -21,7 +22,8 @@ function toAnyGame<S, M>(game: Game<S, M>): AnyGame {
 export const games: readonly AnyGame[] = [
 	toAnyGame(klondike),
 	toAnyGame(klondikeDraw1),
-	toAnyGame(freecell)
+	toAnyGame(freecell),
+	toAnyGame(yukon)
 ];
 
 export const catalog: readonly GameMeta[] = games.map((g) => g.definition.meta);
