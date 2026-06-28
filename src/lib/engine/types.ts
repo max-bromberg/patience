@@ -39,6 +39,10 @@ export interface GameMeta {
 	readonly difficulty: Difficulty;
 	/** Grouping for the catalog, e.g. 'builder'. */
 	readonly family: string;
+	/** Short "how to play" bullet steps shown in the player's info panel. */
+	readonly howTo?: readonly string[];
+	/** External URL (e.g. Wikipedia) for "learn more". */
+	readonly learnMore?: string;
 }
 
 /**

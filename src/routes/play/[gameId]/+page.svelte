@@ -8,6 +8,9 @@
 
 	const gameId = $derived(page.params.gameId);
 	const game = $derived(getGame(gameId ?? ''));
+	const meta = $derived(game?.definition.meta);
+
+	let showHelp = $state(false);
 
 	// Fresh controller whenever the game id changes. Seed picks the deal; the
 	// shuffle itself stays deterministic from that seed.
@@ -40,6 +43,11 @@
 		<a class="btn ghost" href={resolve('/')} aria-label="Back to catalog">‹ Catalog</a>
 		<span class="title">{game?.definition.meta.name ?? 'Game'}</span>
 		<div class="actions">
+			{#if meta?.howTo}
+				<button class="btn icon" onclick={() => (showHelp = true)} aria-label="How to play">
+					?
+				</button>
+			{/if}
 			<button
 				class="btn icon"
 				onclick={() => settings.toggleSound()}
@@ -77,6 +85,34 @@
 				</div>
 			</div>
 		{/if}
+	{/if}
+
+	{#if showHelp && meta?.howTo}
+		<div
+			class="overlay"
+			role="button"
+			tabindex="-1"
+			onclick={(e) => e.target === e.currentTarget && (showHelp = false)}
+			onkeydown={(e) => e.key === 'Escape' && (showHelp = false)}
+		>
+			<div class="sheet" role="dialog" aria-label="How to play {meta.name}">
+				<h2>How to play {meta.name}</h2>
+				<ul>
+					{#each meta.howTo as step (step)}
+						<li>{step}</li>
+					{/each}
+				</ul>
+				<div class="sheet-actions">
+					{#if meta.learnMore}
+						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- external URL -->
+						<a class="btn ghost" href={meta.learnMore} target="_blank" rel="noopener noreferrer">
+							Learn more ↗
+						</a>
+					{/if}
+					<button class="btn primary" onclick={() => (showHelp = false)}>Got it</button>
+				</div>
+			</div>
+		</div>
 	{/if}
 </div>
 
@@ -183,5 +219,49 @@
 		from {
 			opacity: 0;
 		}
+	}
+
+	.overlay {
+		position: fixed;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		padding: 1rem;
+		background: rgba(0, 0, 0, 0.45);
+		animation: fade 0.2s var(--ease-out);
+		z-index: 10;
+	}
+	.sheet {
+		background: var(--card-bg);
+		color: var(--card-ink-black);
+		border-radius: 1rem;
+		padding: 1.5rem 1.6rem;
+		max-width: 30rem;
+		width: 100%;
+		box-shadow: var(--card-shadow-lift);
+	}
+	.sheet h2 {
+		margin: 0 0 0.75rem;
+		font-size: 1.2rem;
+	}
+	.sheet ul {
+		margin: 0 0 1.25rem;
+		padding-left: 1.1rem;
+		display: grid;
+		gap: 0.4rem;
+	}
+	.sheet li {
+		font-size: 0.95rem;
+		line-height: 1.35;
+	}
+	.sheet-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.5rem;
+		align-items: center;
+	}
+	.sheet-actions .btn.ghost {
+		color: var(--card-ink-black);
+		background: rgba(0, 0, 0, 0.06);
 	}
 </style>

@@ -91,7 +91,16 @@ export function makeFreeCell(): Game<FreeCellState, FreeCellMove> {
 			name: 'FreeCell',
 			blurb: 'Almost always winnable — every card is on the table.',
 			difficulty: 'medium',
-			family: 'builder'
+			family: 'builder',
+			howTo: [
+				'Build the four foundations up by suit, Ace to King.',
+				'Build down the tableau in alternating colors.',
+				'The four free cells each hold one card — use them as temporary parking.',
+				'Any card may move to an empty column.',
+				'Longer sequences move at once only when enough free cells/empty columns are open.',
+				'Double-tap a card to send it straight to a foundation.'
+			],
+			learnMore: 'https://en.wikipedia.org/wiki/FreeCell'
 		},
 
 		initialState(seed) {

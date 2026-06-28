@@ -116,7 +116,15 @@ export function makeKlondike(drawCount: 1 | 3): Game<KlondikeState, KlondikeMove
 					? 'The classic, in its gentler one-card-draw form.'
 					: 'The classic solitaire: build the foundations up by suit.',
 			difficulty: drawCount === 1 ? 'easy' : 'medium',
-			family: 'builder'
+			family: 'builder',
+			howTo: [
+				'Build the four foundations up by suit, Ace to King.',
+				`Tap the stock to deal ${drawCount === 1 ? 'a card' : 'three cards'} to the waste; tap again to redeal once empty.`,
+				'On the tableau, build down in alternating colors; move sequences together.',
+				'Only a King may start an empty column.',
+				'Double-tap a card to send it straight to a foundation.'
+			],
+			learnMore: 'https://en.wikipedia.org/wiki/Klondike_(solitaire)'
 		},
 
 		initialState(seed) {
