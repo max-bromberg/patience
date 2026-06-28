@@ -100,35 +100,62 @@
 
 <div class="screen">
 	<header class="bar">
-		<a class="btn ghost" href={resolve('/')} aria-label="Back to catalog">‹ Catalog</a>
+		<a class="tool" href={resolve('/')} aria-label="Back to catalog" title="Back to catalog">
+			<span class="ico">‹</span>
+		</a>
 		<span class="title">
 			{game?.definition.meta.name ?? 'Game'}
 			{#if isDaily}<span class="badge">Daily</span>{/if}
 		</span>
 		<div class="actions">
-			{#if meta?.howTo}
-				<button class="btn icon" onclick={() => (showHelp = true)} aria-label="How to play">
-					?
+			{#if controller}
+				{#if controller.canAutoFinish && !won}
+					<button
+						class="tool primary-tool"
+						onclick={autoFinish}
+						disabled={autoTimer !== null}
+						aria-label="Auto-finish"
+						title="Auto-finish"
+					>
+						<span class="ico">⏩</span>
+					</button>
+				{/if}
+				<button
+					class="tool"
+					onclick={() => controller.undo()}
+					disabled={!controller.canUndo}
+					aria-label="Undo"
+					title="Undo"
+				>
+					<span class="ico">↩</span>
+				</button>
+				<button
+					class="tool"
+					onclick={() => controller.newDeal(freshSeed())}
+					aria-label="New deal"
+					title="New deal"
+				>
+					<span class="ico">🔀</span>
 				</button>
 			{/if}
 			<button
-				class="btn icon"
+				class="tool"
 				onclick={() => settings.toggleSound()}
 				aria-label={settings.sound ? 'Mute sound' : 'Unmute sound'}
 				aria-pressed={settings.sound}
+				title={settings.sound ? 'Mute sound' : 'Unmute sound'}
 			>
-				{settings.sound ? '🔊' : '🔇'}
+				<span class="ico">{settings.sound ? '🔊' : '🔇'}</span>
 			</button>
-			{#if controller}
-				{#if controller.canAutoFinish && !won}
-					<button class="btn accent" onclick={autoFinish} disabled={autoTimer !== null}>
-						Auto-finish
-					</button>
-				{/if}
-				<button class="btn" onclick={() => controller.undo()} disabled={!controller.canUndo}>
-					Undo
+			{#if meta?.howTo}
+				<button
+					class="tool"
+					onclick={() => (showHelp = true)}
+					aria-label="How to play"
+					title="How to play"
+				>
+					<span class="ico">?</span>
 				</button>
-				<button class="btn" onclick={() => controller.newDeal(freshSeed())}>New deal</button>
 			{/if}
 		</div>
 	</header>
@@ -243,7 +270,44 @@
 	.actions {
 		margin-left: auto;
 		display: flex;
-		gap: 0.4rem;
+		gap: 0.3rem;
+	}
+
+	/* Unified circular icon buttons for the top bar. */
+	.tool {
+		width: 2.3rem;
+		height: 2.3rem;
+		flex: 0 0 auto;
+		display: inline-grid;
+		place-items: center;
+		border-radius: 999px;
+		border: none;
+		background: var(--ui-surface);
+		color: var(--ui-text);
+		cursor: pointer;
+		text-decoration: none;
+		transition:
+			background 0.14s var(--ease-out),
+			transform 0.1s var(--ease-out);
+		-webkit-tap-highlight-color: transparent;
+	}
+	.tool:hover {
+		background: var(--ui-surface-hover);
+	}
+	.tool:active {
+		transform: scale(0.92);
+	}
+	.tool:disabled {
+		opacity: 0.35;
+		cursor: default;
+	}
+	.tool.primary-tool {
+		background: var(--drop-ring);
+		color: #2b2208;
+	}
+	.tool .ico {
+		font-size: 1.1rem;
+		line-height: 1;
 	}
 
 	.btn {
@@ -269,18 +333,8 @@
 	.btn.ghost {
 		background: transparent;
 	}
-	.btn.icon {
-		padding: 0.4rem 0.55rem;
-		font-size: 0.95rem;
-		line-height: 1;
-	}
 	.btn.primary {
 		background: var(--back-1);
-		font-weight: 700;
-	}
-	.btn.accent {
-		background: var(--drop-ring);
-		color: #2b2208;
 		font-weight: 700;
 	}
 

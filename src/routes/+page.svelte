@@ -125,114 +125,116 @@
 			<div class="sheet" role="dialog" aria-label="Settings">
 				<h2>Settings</h2>
 
-				<section>
-					<h3>Table theme</h3>
-					<div class="swatches">
-						{#each THEMES as t (t.id)}
+				<div class="sheet-body">
+					<section>
+						<h3>Table theme</h3>
+						<div class="swatches">
+							{#each THEMES as t (t.id)}
+								<button
+									class="swatch"
+									class:selected={settings.theme === t.id}
+									style:background={t.swatch}
+									onclick={() => (settings.theme = t.id)}
+									aria-label={t.name}
+									aria-pressed={settings.theme === t.id}
+								>
+									{#if settings.theme === t.id}<span class="check">✓</span>{/if}
+								</button>
+							{/each}
 							<button
-								class="swatch"
-								class:selected={settings.theme === t.id}
-								style:background={t.swatch}
-								onclick={() => (settings.theme = t.id)}
-								aria-label={t.name}
-								aria-pressed={settings.theme === t.id}
+								class="swatch custom"
+								class:selected={settings.theme === 'custom'}
+								onclick={() => (settings.theme = 'custom')}
+								aria-label="Custom colors"
+								aria-pressed={settings.theme === 'custom'}
 							>
-								{#if settings.theme === t.id}<span class="check">✓</span>{/if}
+								{#if settings.theme === 'custom'}<span class="check">✓</span>{:else}<span
+										class="plus">🎨</span
+									>{/if}
 							</button>
-						{/each}
-						<button
-							class="swatch custom"
-							class:selected={settings.theme === 'custom'}
-							onclick={() => (settings.theme = 'custom')}
-							aria-label="Custom colors"
-							aria-pressed={settings.theme === 'custom'}
-						>
-							{#if settings.theme === 'custom'}<span class="check">✓</span>{:else}<span class="plus"
-									>🎨</span
-								>{/if}
-						</button>
-					</div>
-
-					{#if settings.theme === 'custom'}
-						<div class="custom-colors">
-							<label>
-								<span>Felt</span>
-								<input
-									type="color"
-									value={settings.custom.felt}
-									oninput={(e) => settings.setCustom({ felt: e.currentTarget.value })}
-								/>
-							</label>
-							<label>
-								<span>Card back</span>
-								<input
-									type="color"
-									value={settings.custom.back}
-									oninput={(e) => settings.setCustom({ back: e.currentTarget.value })}
-								/>
-							</label>
-							<label>
-								<span>Accent</span>
-								<input
-									type="color"
-									value={settings.custom.accent}
-									oninput={(e) => settings.setCustom({ accent: e.currentTarget.value })}
-								/>
-							</label>
 						</div>
-					{/if}
-				</section>
 
-				<section>
-					<h3>Card face</h3>
-					<div class="faces">
-						{#each FACES as f (f.id)}
-							<button
-								class="face-opt"
-								class:selected={settings.face === f.id}
-								onclick={() => (settings.face = f.id)}
-								aria-label={f.name}
-								aria-pressed={settings.face === f.id}
-							>
-								<span class="face-prev" data-face={f.id}>
-									<CardView card={sampleCard} w={40} h={56} />
-								</span>
-								<span class="face-name">{f.name}</span>
-							</button>
-						{/each}
-					</div>
-				</section>
+						{#if settings.theme === 'custom'}
+							<div class="custom-colors">
+								<label>
+									<span>Felt</span>
+									<input
+										type="color"
+										value={settings.custom.felt}
+										oninput={(e) => settings.setCustom({ felt: e.currentTarget.value })}
+									/>
+								</label>
+								<label>
+									<span>Card back</span>
+									<input
+										type="color"
+										value={settings.custom.back}
+										oninput={(e) => settings.setCustom({ back: e.currentTarget.value })}
+									/>
+								</label>
+								<label>
+									<span>Accent</span>
+									<input
+										type="color"
+										value={settings.custom.accent}
+										oninput={(e) => settings.setCustom({ accent: e.currentTarget.value })}
+									/>
+								</label>
+							</div>
+						{/if}
+					</section>
 
-				<section>
-					<h3>Vibes</h3>
-					<div class="vibes-list">
-						{#each VIBES as v (v.id)}
-							<button
-								class="vibe-chip"
-								class:on={settings.vibe(v.id)}
-								onclick={() => settings.toggleVibe(v.id)}
-								aria-pressed={settings.vibe(v.id)}
-								title={v.description}
-							>
-								<span class="vibe-emoji">{v.emoji}</span>{v.name}
-							</button>
-						{/each}
-					</div>
-				</section>
+					<section>
+						<h3>Card face</h3>
+						<div class="faces">
+							{#each FACES as f (f.id)}
+								<button
+									class="face-opt"
+									class:selected={settings.face === f.id}
+									onclick={() => (settings.face = f.id)}
+									aria-label={f.name}
+									aria-pressed={settings.face === f.id}
+								>
+									<span class="face-prev" data-face={f.id}>
+										<CardView card={sampleCard} w={40} h={56} />
+									</span>
+									<span class="face-name">{f.name}</span>
+								</button>
+							{/each}
+						</div>
+					</section>
 
-				<section class="row">
-					<h3>Sound</h3>
-					<button
-						class="toggle"
-						class:on={settings.sound}
-						onclick={() => settings.toggleSound()}
-						role="switch"
-						aria-checked={settings.sound}
-						aria-label="Sound effects"
-					>
-						<span class="knob"></span>
-					</button>
-				</section>
+					<section>
+						<h3>Vibes</h3>
+						<div class="vibes-list">
+							{#each VIBES as v (v.id)}
+								<button
+									class="vibe-chip"
+									class:on={settings.vibe(v.id)}
+									onclick={() => settings.toggleVibe(v.id)}
+									aria-pressed={settings.vibe(v.id)}
+									title={v.description}
+								>
+									<span class="vibe-emoji">{v.emoji}</span>{v.name}
+								</button>
+							{/each}
+						</div>
+					</section>
+
+					<section class="row">
+						<h3>Sound</h3>
+						<button
+							class="toggle"
+							class:on={settings.sound}
+							onclick={() => settings.toggleSound()}
+							role="switch"
+							aria-checked={settings.sound}
+							aria-label="Sound effects"
+						>
+							<span class="knob"></span>
+						</button>
+					</section>
+				</div>
 
 				<div class="sheet-actions">
 					<button class="done" onclick={() => (showSettings = false)}>Done</button>
@@ -514,12 +516,24 @@
 		background: var(--card-bg);
 		color: var(--card-ink-black);
 		border-radius: 1rem;
-		padding: 1.5rem 1.6rem;
+		padding: 1.25rem 1.4rem;
 		width: 100%;
 		max-width: 26rem;
+		max-height: calc(100dvh - 1.5rem);
 		box-shadow: var(--card-shadow-lift);
+		display: flex;
+		flex-direction: column;
+		gap: 0.9rem;
+		overflow: hidden;
+	}
+	.sheet-body {
 		display: grid;
 		gap: 1.1rem;
+		overflow-y: auto;
+		-webkit-overflow-scrolling: touch;
+		/* room for the scrollbar / fade so content doesn't hug the edge */
+		padding-right: 0.3rem;
+		margin-right: -0.3rem;
 	}
 	.sheet h2 {
 		margin: 0;
@@ -681,6 +695,9 @@
 	.sheet-actions {
 		display: flex;
 		justify-content: flex-end;
+		flex: none;
+		padding-top: 0.8rem;
+		border-top: 1px solid rgba(0, 0, 0, 0.08);
 	}
 	.done {
 		font-family: inherit;
