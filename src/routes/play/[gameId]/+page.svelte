@@ -9,10 +9,13 @@
 	import { daily } from '$lib/storage/daily.svelte';
 	import { clearProgress, loadProgress, saveProgress } from '$lib/storage/resume';
 	import { settings } from '$lib/storage/settings.svelte';
+	import { EuchreController, EuchreTable, getTrickGame } from '$lib/trick';
 
 	const gameId = $derived(page.params.gameId);
 	const game = $derived(getGame(gameId ?? ''));
-	const meta = $derived(game?.definition.meta);
+	// Trick-taking games (Euchre family) use a separate engine + UI.
+	const trick = $derived(getTrickGame(gameId ?? ''));
+	const meta = $derived(game?.definition.meta ?? trick?.meta);
 
 	let showHelp = $state(false);
 
@@ -44,6 +47,13 @@
 			}
 		}
 		return new GameController(game, freshSeed());
+	});
+
+	// Trick-taking controller (Euchre family). Recreated only when the game id or
+	// url seed changes; a `{#key}` around the table disposes the old timer.
+	let euchre = $derived.by(() => {
+		if (!trick || gameId === undefined) return null;
+		return new EuchreController(urlSeed ?? freshSeed(), trick.variant);
 	});
 
 	// Persist the casual game after every change; clear it once won. Reading
@@ -95,7 +105,7 @@
 </script>
 
 <svelte:head>
-	<title>{game ? game.definition.meta.name : 'Play'} · Patience</title>
+	<title>{meta ? meta.name : 'Play'} · Patience</title>
 </svelte:head>
 
 <div class="screen">
@@ -104,7 +114,7 @@
 			<span class="ico">‹</span>
 		</a>
 		<span class="title">
-			{game?.definition.meta.name ?? 'Game'}
+			{meta?.name ?? 'Game'}
 			{#if isDaily}<span class="badge">Daily</span>{/if}
 		</span>
 		<div class="actions">
@@ -137,6 +147,15 @@
 				>
 					<span class="ico">🔀</span>
 				</button>
+			{:else if euchre}
+				<button
+					class="tool"
+					onclick={() => euchre.newDeal(freshSeed())}
+					aria-label="New game"
+					title="New game"
+				>
+					<span class="ico">🔀</span>
+				</button>
 			{/if}
 			<button
 				class="tool"
@@ -160,7 +179,13 @@
 		</div>
 	</header>
 
-	{#if !game}
+	{#if euchre}
+		<div class="play">
+			{#key euchre}
+				<EuchreTable controller={euchre} />
+			{/key}
+		</div>
+	{:else if !game}
 		<div class="missing">
 			<p>No game called “{gameId}”.</p>
 			<a class="btn" href={resolve('/')}>Back to catalog</a>

@@ -5,7 +5,9 @@
 	import type { GameMeta } from '$lib/engine';
 	import { makeCard } from '$lib/engine';
 	import { catalog, getGame } from '$lib/games/registry';
+	import { pickQuote, type Quote } from '$lib/quotes';
 	import CardView from '$lib/render/CardView.svelte';
+	import GameIcon from '$lib/render/GameIcon.svelte';
 	import { FACES } from '$lib/theme/faces';
 	import { THEMES } from '$lib/theme/themes';
 	import { VIBES } from '$lib/theme/vibes';
@@ -35,8 +37,12 @@
 	// to use the player's local date and avoid a prerender/hydration mismatch:
 	// `mounted` stays false through SSR and the first client render, then flips.
 	let mounted = $state(false);
+	// A fresh card-wisdom quote each visit. Chosen after mount so SSR and the
+	// first client render agree (Math.random would otherwise mismatch).
+	let quote = $state<Quote | null>(null);
 	onMount(() => {
 		mounted = true;
+		quote = pickQuote();
 	});
 	const dailyInfo: DailyInfo | null = $derived(
 		mounted
@@ -67,6 +73,12 @@
 			</div>
 			<h1>Patience</h1>
 			<p class="tagline">A cozy collection of single-player card games.</p>
+			<figure class="quote" class:show={quote !== null}>
+				{#if quote}
+					<blockquote>“{quote.text}”</blockquote>
+					<figcaption>— {quote.author}</figcaption>
+				{/if}
+			</figure>
 		</header>
 
 		{#if dailyInfo && dailyMeta}
@@ -96,13 +108,11 @@
 					{#each metas as meta, i (meta.id)}
 						<li style="--d:{i}">
 							<a class="tile" href={resolve(`/play/${meta.id}`)}>
-								<span class="art" aria-hidden="true">
-									<span class="mini m1"></span>
-									<span class="mini m2"></span>
-									<span class="mini m3"></span>
+								<span class="art"><GameIcon id={meta.id} /></span>
+								<span class="text">
+									<span class="name">{meta.name}</span>
+									<span class="blurb">{meta.blurb}</span>
 								</span>
-								<span class="name">{meta.name}</span>
-								<span class="blurb">{meta.blurb}</span>
 								<span class="pill {meta.difficulty}">{meta.difficulty}</span>
 							</a>
 						</li>
@@ -297,6 +307,30 @@
 		font-size: clamp(0.95rem, 4vw, 1.1rem);
 	}
 
+	.quote {
+		margin: 0.9rem auto 0;
+		max-width: 32rem;
+		min-height: 2.6rem;
+		opacity: 0;
+		transition: opacity 0.5s var(--ease-out);
+	}
+	.quote.show {
+		opacity: 1;
+	}
+	.quote blockquote {
+		margin: 0;
+		font-size: clamp(0.9rem, 3.6vw, 1.02rem);
+		font-style: italic;
+		line-height: 1.4;
+		color: var(--ui-text);
+	}
+	.quote figcaption {
+		margin-top: 0.25rem;
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: var(--drop-ring);
+	}
+
 	.daily {
 		display: flex;
 		align-items: center;
@@ -367,33 +401,35 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(190px, 230px));
-		justify-content: center;
-		gap: 0.9rem;
+		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+		gap: 0.6rem;
 	}
 
 	.tile {
 		display: grid;
-		grid-template-rows: auto auto 1fr auto;
-		gap: 0.4rem;
+		grid-template-columns: auto 1fr;
+		grid-template-rows: auto auto;
+		align-items: center;
+		column-gap: 0.6rem;
+		row-gap: 0.3rem;
 		height: 100%;
-		padding: 0.9rem;
-		border-radius: 1rem;
+		padding: 0.7rem 0.75rem;
+		border-radius: 0.9rem;
 		background: var(--tile-bg);
 		border: 1px solid var(--tile-border);
 		color: inherit;
 		text-decoration: none;
-		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+		box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
 		transition:
 			transform 0.16s var(--ease-out),
 			background 0.16s var(--ease-out);
-		animation: tile-in 0.45s var(--ease-out) backwards;
-		animation-delay: calc(var(--d, 0) * 55ms);
+		animation: tile-in 0.4s var(--ease-out) backwards;
+		animation-delay: calc(var(--d, 0) * 40ms);
 	}
 	@keyframes tile-in {
 		from {
 			opacity: 0;
-			transform: translateY(12px) scale(0.98);
+			transform: translateY(10px) scale(0.98);
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
@@ -410,56 +446,40 @@
 	}
 
 	.art {
-		position: relative;
-		display: block;
-		height: 56px;
+		grid-row: 1 / span 2;
+		display: grid;
+		place-items: center;
+		width: 46px;
+		height: 46px;
+		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 	}
-	.mini {
-		position: absolute;
-		top: 4px;
-		width: 34px;
-		height: 48px;
-		border-radius: 6px;
-		background: var(--card-bg);
-		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-		border: 1px solid rgba(0, 0, 0, 0.12);
+	.text {
+		display: grid;
+		gap: 0.1rem;
+		min-width: 0;
 	}
-	.m1 {
-		left: calc(50% - 30px);
-		transform: rotate(-14deg);
-	}
-	.m2 {
-		left: calc(50% - 17px);
-		top: 1px;
-		z-index: 1;
-	}
-	.m3 {
-		left: calc(50% - 4px);
-		transform: rotate(14deg);
-		background: repeating-linear-gradient(
-			45deg,
-			var(--back-1) 0,
-			var(--back-1) 4px,
-			var(--back-2) 4px,
-			var(--back-2) 8px
-		);
-	}
-
 	.name {
 		font-weight: 700;
-		font-size: 1.05rem;
+		font-size: 0.98rem;
+		line-height: 1.15;
 	}
 	.blurb {
-		font-size: 0.82rem;
+		font-size: 0.74rem;
 		color: var(--ui-muted);
 		line-height: 1.25;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
 	}
 	.pill {
+		grid-column: 2;
 		justify-self: start;
-		font-size: 0.7rem;
+		font-size: 0.62rem;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		padding: 0.15rem 0.5rem;
+		padding: 0.12rem 0.45rem;
 		border-radius: 999px;
 		font-weight: 700;
 	}

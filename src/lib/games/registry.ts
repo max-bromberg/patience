@@ -5,6 +5,7 @@
  */
 
 import type { AnyGame, Game, GameMeta } from '$lib/engine';
+import { trickCatalog } from '$lib/trick/registry';
 import { acesup } from './acesup';
 import { fortythieves } from './fortythieves';
 import { freecell } from './freecell';
@@ -42,7 +43,15 @@ export const games: readonly AnyGame[] = [
 	toAnyGame(acesup)
 ];
 
-export const catalog: readonly GameMeta[] = games.map((g) => g.definition.meta);
+/**
+ * The home catalog: every solitaire plus the trick-taking games. Trick games
+ * live outside the {@link Game} contract, so their metadata is appended here
+ * purely for browsing; the player route dispatches on the id.
+ */
+export const catalog: readonly GameMeta[] = [
+	...games.map((g) => g.definition.meta),
+	...trickCatalog
+];
 
 export function getGame(id: string): AnyGame | undefined {
 	return games.find((g) => g.definition.meta.id === id);
