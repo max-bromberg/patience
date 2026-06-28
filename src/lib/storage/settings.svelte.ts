@@ -36,7 +36,7 @@ function defaultVibes(): Record<string, boolean> {
 class Settings {
 	#data = $state<SettingsData>({
 		sound: true,
-		music: false,
+		music: true,
 		musicVolume: 0.5,
 		theme: DEFAULT_THEME,
 		face: DEFAULT_FACE,
@@ -48,7 +48,7 @@ class Settings {
 		const saved = readJSON<Partial<SettingsData>>(KEY, {});
 		this.#data = {
 			sound: saved.sound ?? true,
-			music: saved.music ?? false,
+			music: saved.music ?? true,
 			musicVolume:
 				typeof saved.musicVolume === 'number' && saved.musicVolume >= 0 && saved.musicVolume <= 1
 					? saved.musicVolume
