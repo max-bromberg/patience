@@ -14,7 +14,13 @@ export const THEMES: readonly ThemeOption[] = [
 	{ id: 'crimson', name: 'Crimson', swatch: '#9c3b46' },
 	{ id: 'sunset', name: 'Sunset', swatch: '#b5532e' },
 	{ id: 'rose', name: 'Rose', swatch: '#b14a6e' },
-	{ id: 'slate', name: 'Slate', swatch: '#4a5b73' }
+	{ id: 'slate', name: 'Slate', swatch: '#4a5b73' },
+	// cute / pastel
+	{ id: 'blossom', name: 'Blossom', swatch: '#d98aa6' },
+	{ id: 'mint', name: 'Mint', swatch: '#6bc2a8' },
+	{ id: 'grape', name: 'Grape', swatch: '#9d7ad0' },
+	{ id: 'cloudtop', name: 'Cloudtop', swatch: '#c2def5' },
+	{ id: 'buttercream', name: 'Buttercream', swatch: '#f6ddae' }
 ];
 
 export const DEFAULT_THEME = 'felt';

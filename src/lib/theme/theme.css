@@ -47,6 +47,11 @@
 	--ui-surface: rgba(0, 0, 0, 0.22);
 	--ui-surface-hover: rgba(0, 0, 0, 0.34);
 
+	/* Catalog tile surfaces — overridden by light themes for contrast */
+	--tile-bg: rgba(0, 0, 0, 0.2);
+	--tile-bg-hover: rgba(0, 0, 0, 0.3);
+	--tile-border: rgba(255, 255, 255, 0.08);
+
 	/* Type */
 	--font-rounded: ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif;
 
@@ -116,6 +121,76 @@
 	--felt-3: #232d3f;
 	--back-1: #c06b3a;
 	--back-2: #934f27;
+}
+
+/* ---- Cute / pastel themes -------------------------------------------- */
+/* Medium-toned cute hues (still readable with the default light UI text). */
+:root[data-theme='blossom'] {
+	--felt-1: #d98aa6;
+	--felt-2: #c06587;
+	--felt-3: #9c466a;
+	--back-1: #5bb0a0;
+	--back-2: #3f8b7d;
+	--drop-ring: #fff0a6;
+}
+
+:root[data-theme='mint'] {
+	--felt-1: #6bc2a8;
+	--felt-2: #4da08a;
+	--felt-3: #36806d;
+	--back-1: #e08aa6;
+	--back-2: #c06587;
+}
+
+:root[data-theme='grape'] {
+	--felt-1: #9d7ad0;
+	--felt-2: #7d57b0;
+	--felt-3: #5d3d8a;
+	--back-1: #e0a14a;
+	--back-2: #b87a2c;
+}
+
+/* Light pastel themes (Cinnamoroll / Miffy energy) — switch UI to dark ink. */
+:root[data-theme='cloudtop'] {
+	--felt-1: #d8ecfb;
+	--felt-2: #c2def5;
+	--felt-3: #a7cdee;
+	--back-1: #7fb6e6;
+	--back-2: #5f97cf;
+	--drop-ring: #f6c66b;
+	--drop-ring-glow: 0 0 0 3px rgba(123, 170, 230, 0.5);
+	--ui-text: #3a4d66;
+	--ui-muted: #5d7186;
+	--ui-surface: rgba(58, 77, 102, 0.12);
+	--ui-surface-hover: rgba(58, 77, 102, 0.22);
+	--slot-outline: rgba(58, 77, 102, 0.28);
+	--slot-fill: rgba(58, 77, 102, 0.06);
+	--slot-glyph: rgba(58, 77, 102, 0.3);
+	--tile-bg: rgba(255, 255, 255, 0.5);
+	--tile-bg-hover: rgba(255, 255, 255, 0.72);
+	--tile-border: rgba(58, 77, 102, 0.14);
+	--table-blend: overlay, normal;
+}
+
+:root[data-theme='buttercream'] {
+	--felt-1: #fdeccb;
+	--felt-2: #f6ddae;
+	--felt-3: #ecca8d;
+	--back-1: #e8893f;
+	--back-2: #c66a27;
+	--drop-ring: #e8893f;
+	--drop-ring-glow: 0 0 0 3px rgba(232, 137, 63, 0.45);
+	--ui-text: #5a4632;
+	--ui-muted: #8a6f52;
+	--ui-surface: rgba(90, 70, 50, 0.12);
+	--ui-surface-hover: rgba(90, 70, 50, 0.22);
+	--slot-outline: rgba(90, 70, 50, 0.26);
+	--slot-fill: rgba(90, 70, 50, 0.06);
+	--slot-glyph: rgba(90, 70, 50, 0.3);
+	--tile-bg: rgba(255, 255, 255, 0.5);
+	--tile-bg-hover: rgba(255, 255, 255, 0.74);
+	--tile-border: rgba(90, 70, 50, 0.14);
+	--table-blend: overlay, normal;
 }
 
 /* Custom theme: felt/back/accent vars are set inline on <html> from the picks. */

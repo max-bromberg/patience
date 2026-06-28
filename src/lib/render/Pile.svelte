@@ -17,7 +17,7 @@
 <div
 	class="slot"
 	class:target
-	style="left:{x}px; top:{y}px; width:{w}px; height:{h}px;"
+	style="left:{x}px; top:{y}px; width:{w}px; height:{h}px; font-size:{w}px;"
 	data-pile-id={pile.id}
 >
 	{#if pile.cards.length === 0 && pile.placeholder}
@@ -29,7 +29,9 @@
 	.slot {
 		position: absolute;
 		box-sizing: border-box;
-		border-radius: 8%;
+		/* match the card corner radius (em resolves against the slot font-size,
+		   which we set to the card width) so the outline tucks behind cards */
+		border-radius: var(--card-radius, 0.1em);
 		border: 2px dashed var(--slot-outline);
 		background: var(--slot-fill);
 		display: grid;

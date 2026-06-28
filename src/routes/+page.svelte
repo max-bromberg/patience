@@ -377,8 +377,8 @@
 		height: 100%;
 		padding: 0.9rem;
 		border-radius: 1rem;
-		background: rgba(0, 0, 0, 0.2);
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		background: var(--tile-bg);
+		border: 1px solid var(--tile-border);
 		color: inherit;
 		text-decoration: none;
 		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
@@ -401,7 +401,7 @@
 	}
 	.tile:hover {
 		transform: translateY(-3px);
-		background: rgba(0, 0, 0, 0.3);
+		background: var(--tile-bg-hover);
 	}
 	.tile:active {
 		transform: translateY(-1px);
