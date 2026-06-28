@@ -9,9 +9,15 @@ import type { GameMeta } from '$lib/engine';
 
 export interface TrickGame {
 	readonly meta: GameMeta;
+	/** Which engine variant in {@link VARIANTS} this catalog entry plays. */
+	readonly variant: string;
 }
 
+const BOWERS =
+	'The Jack of trump (right bower) is highest, then the Jack of the same colour (left bower), then A K Q 10 9 of trump.';
+
 const euchre: TrickGame = {
+	variant: 'euchre',
 	meta: {
 		id: 'euchre',
 		name: 'Euchre',
@@ -21,7 +27,7 @@ const euchre: TrickGame = {
 		howTo: [
 			'You (South) and your partner (North) play against two AI opponents.',
 			'Each hand, a card is turned up. In round one you may order it up as trump; if all pass, round two lets someone name a different suit.',
-			'The Jack of trump (right bower) is highest, then the Jack of the same colour (left bower), then A K Q 10 9 of trump.',
+			BOWERS,
 			'Follow the led suit if you can. The team that calls trump must win at least 3 of the 5 tricks or get "euchred" (+2 to the other team).',
 			'Win all 5 for 2 points, or go alone (partner sits out) and sweep for 4. First team to 10 wins.'
 		],
@@ -29,7 +35,45 @@ const euchre: TrickGame = {
 	}
 };
 
-export const trickGames: readonly TrickGame[] = [euchre];
+const euchre2: TrickGame = {
+	variant: 'euchre2',
+	meta: {
+		id: 'euchre2',
+		name: 'Euchre Duel',
+		blurb: 'Head-to-head Euchre against a single AI — no partners, pure skill.',
+		difficulty: 'medium',
+		family: 'Trick-taking',
+		howTo: [
+			'Two-handed Euchre: just you versus one AI, five cards each.',
+			'Bid as usual — order up the turned card or name a suit in round two.',
+			BOWERS,
+			'Whoever calls trump must take at least 3 of the 5 tricks or be euchred (+2 to the opponent).',
+			'3–4 tricks score 1, all five score 2. First to 10 points wins.'
+		],
+		learnMore: 'https://en.wikipedia.org/wiki/Euchre#Two_players'
+	}
+};
+
+const euchre3: TrickGame = {
+	variant: 'euchre3',
+	meta: {
+		id: 'euchre3',
+		name: 'Cutthroat Euchre',
+		blurb: 'Three-player free-for-all: the maker takes on both opponents alone.',
+		difficulty: 'hard',
+		family: 'Trick-taking',
+		howTo: [
+			'Three-handed Euchre with no partnerships — every player for themselves.',
+			'The player who calls trump plays alone against the other two.',
+			BOWERS,
+			'Make 3–4 tricks for 1 point, sweep all five for 2. Get euchred and BOTH opponents score 2.',
+			'First player to 10 points wins.'
+		],
+		learnMore: 'https://en.wikipedia.org/wiki/Euchre#Three_players'
+	}
+};
+
+export const trickGames: readonly TrickGame[] = [euchre, euchre2, euchre3];
 
 export const trickCatalog: readonly GameMeta[] = trickGames.map((g) => g.meta);
 

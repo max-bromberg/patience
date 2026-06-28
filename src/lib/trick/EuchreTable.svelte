@@ -10,8 +10,6 @@
 	const s = $derived(controller.state);
 	onDestroy(() => controller.dispose());
 
-	// Seat geometry: 0 South (human, bottom), 1 West (left), 2 North (top), 3 East (right).
-	const seatName = ['You', 'West', 'Partner', 'East'];
 	const SUIT_COLOR: Record<string, boolean> = {
 		hearts: true,
 		diamonds: true,
@@ -19,37 +17,63 @@
 		clubs: false
 	};
 
+	const variant = $derived(s.variant);
+	const partners = $derived(variant.partners);
+	// Seat 2 is your teammate only in the partnership game; elsewhere it's a rival.
+	const seatName = $derived(
+		partners ? ['You', 'West', 'Partner', 'East'] : ['You', 'West', 'North', 'East']
+	);
+
+	// Opponents are every active seat but the human (seat 0), laid out as a row.
+	const opponents = $derived(
+		Array.from({ length: variant.seats }, (_, i) => i).filter((seat) => seat !== 0)
+	);
+
 	const playable = $derived(controller.playableIds);
 	const isHumanPlay = $derived(s.phase === 'playing' && s.turn === 0 && !controller.thinking);
 	const isHumanDiscard = $derived(s.phase === 'discard' && s.dealer === 0);
 
 	let alone = $state(false);
 
-	// The trick card played by a given seat, if any.
-	function trickCard(seat: number): Card | null {
-		return s.trick.find((p) => p.player === seat)?.card ?? null;
-	}
-
 	function onHandCard(card: Card) {
 		if (isHumanDiscard) controller.discard(card.id);
 		else if (isHumanPlay && playable.includes(card.id)) controller.play(card.id);
 	}
 
-	function teamScore(team: 0 | 1): number {
-		return s.scores[team];
-	}
+	// Scoreboard labels + values, one entry per team.
+	const scoreboard = $derived.by(() => {
+		if (partners) {
+			return [
+				{ label: 'You', value: s.scores[0] },
+				{ label: 'Them', value: s.scores[1] }
+			];
+		}
+		return s.scores.map((value, team) => ({
+			label: team === 0 ? 'You' : seatName[team],
+			value
+		}));
+	});
+
+	const winnerLabel = $derived(
+		s.winner === 0 ? 'You win! 🎉' : partners ? 'Opponents win' : `${seatName[s.winner ?? 0]} wins`
+	);
 
 	const trumpGlyph = $derived(s.trump ? SUIT_GLYPH[s.trump] : null);
 	const trumpRed = $derived(s.trump ? SUIT_COLOR[s.trump] : false);
+
+	// During the brief pause after a trick fills, `trick` is cleared and the
+	// completed trick lives in `lastTrick` — keep showing it so it doesn't blink.
+	const shownTrick = $derived(s.trick.length > 0 ? s.trick : (s.lastTrick ?? []));
 </script>
 
 <div class="felt">
 	<!-- Scoreboard + trump -->
 	<div class="hud">
 		<div class="score">
-			<span class="us">You {teamScore(0)}</span>
-			<span class="sep">–</span>
-			<span class="them">{teamScore(1)} Them</span>
+			{#each scoreboard as t, i (t.label)}
+				{#if i > 0}<span class="sep">·</span>{/if}
+				<span class="team" class:you={i === 0}>{t.label} {t.value}</span>
+			{/each}
 		</div>
 		{#if s.trump}
 			<div class="trump" class:red={trumpRed}>
@@ -59,20 +83,28 @@
 		{/if}
 	</div>
 
-	<!-- Opponent seats -->
-	{#each [2, 1, 3] as seat (seat)}
-		<div class="seat seat-{seat}" class:active={s.turn === seat && controller.thinking}>
-			<div class="seat-label">
-				{seatName[seat]}
-				{#if seat === s.dealer}<span class="deal-chip">D</span>{/if}
+	<!-- Opponents: a row across the top so the layout never overflows on mobile. -->
+	<div class="opponents">
+		{#each opponents as seat (seat)}
+			<div
+				class="opp"
+				class:active={s.turn === seat && controller.thinking}
+				class:sitting={s.sitOut === seat}
+			>
+				<div class="seat-label">
+					{seatName[seat]}
+					{#if seat === s.dealer}<span class="deal-chip">D</span>{/if}
+				</div>
+				<div class="backs">
+					{#each s.hands[seat] as card (card.id)}
+						<div class="back-slot">
+							<CardView card={{ ...card, faceUp: false }} w={30} h={42} />
+						</div>
+					{/each}
+				</div>
 			</div>
-			<div class="backs">
-				{#each s.hands[seat] as card (card.id)}
-					<div class="back-slot"><CardView card={{ ...card, faceUp: false }} w={34} h={48} /></div>
-				{/each}
-			</div>
-		</div>
-	{/each}
+		{/each}
+	</div>
 
 	<!-- Center: the current trick + up-card during bidding -->
 	<div class="center">
@@ -81,12 +113,12 @@
 				<CardView card={s.upCard} w={52} h={74} />
 				<span class="upcard-tag">{s.phase === 'bidding2' ? 'turned down' : 'up-card'}</span>
 			</div>
-		{:else}
+		{:else if shownTrick.length > 0}
 			<div class="trick">
-				{#each [0, 1, 2, 3] as seat (seat)}
-					{@const tc = trickCard(seat)}
-					<div class="play-slot slot-{seat}">
-						{#if tc}<CardView card={tc} w={48} h={68} />{/if}
+				{#each shownTrick as play (play.player)}
+					<div class="play" class:mine={play.player === 0}>
+						<CardView card={play.card} w={46} h={65} />
+						<span class="play-who">{play.player === 0 ? 'You' : seatName[play.player]}</span>
 					</div>
 				{/each}
 			</div>
@@ -94,7 +126,7 @@
 	</div>
 
 	<!-- Human hand -->
-	<div class="seat seat-0" class:active={s.turn === 0 && !controller.thinking}>
+	<div class="you" class:active={s.turn === 0 && !controller.thinking}>
 		<div class="hand" role="group" aria-label="Your hand">
 			{#each s.hands[0] as card (card.id)}
 				{@const can = isHumanDiscard || (isHumanPlay && playable.includes(card.id))}
@@ -127,9 +159,11 @@
 			<p>
 				Order up <b class:red={SUIT_COLOR[s.upCard!.suit]}>{SUIT_GLYPH[s.upCard!.suit]}</b> as trump?
 			</p>
-			<label class="alone-toggle">
-				<input type="checkbox" bind:checked={alone} /> Go alone
-			</label>
+			{#if variant.allowAlone}
+				<label class="alone-toggle">
+					<input type="checkbox" bind:checked={alone} /> Go alone
+				</label>
+			{/if}
 			<div class="row">
 				<button class="btn" onclick={() => controller.pass()}>Pass</button>
 				<button class="btn primary" onclick={() => controller.orderUp(alone)}>Order up</button>
@@ -149,9 +183,11 @@
 					</button>
 				{/each}
 			</div>
-			<label class="alone-toggle">
-				<input type="checkbox" bind:checked={alone} /> Go alone
-			</label>
+			{#if variant.allowAlone}
+				<label class="alone-toggle">
+					<input type="checkbox" bind:checked={alone} /> Go alone
+				</label>
+			{/if}
 			{#if s.dealer !== 0}
 				<div class="row">
 					<button class="btn" onclick={() => controller.pass()}>Pass</button>
@@ -169,8 +205,8 @@
 		</div>
 	{:else if s.phase === 'gameOver'}
 		<div class="panel win">
-			<h2>{s.winner === 0 ? 'You win! 🎉' : 'Opponents win'}</h2>
-			<p>Final: You {teamScore(0)} – {teamScore(1)} Them</p>
+			<h2>{winnerLabel}</h2>
+			<p>Final: {scoreboard.map((t) => `${t.label} ${t.value}`).join(' · ')}</p>
 		</div>
 	{/if}
 </div>
@@ -179,9 +215,10 @@
 	.felt {
 		position: relative;
 		flex: 1;
-		display: grid;
-		grid-template-rows: auto 1fr auto;
+		display: flex;
+		flex-direction: column;
 		min-height: 0;
+		overflow: hidden;
 		padding: 0.5rem;
 		gap: 0.25rem;
 	}
@@ -194,8 +231,16 @@
 		font-size: 0.9rem;
 		padding: 0 0.4rem;
 	}
-	.score .them {
+	.score {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.1rem;
+	}
+	.score .team {
 		opacity: 0.85;
+	}
+	.score .team.you {
+		opacity: 1;
 	}
 	.score .sep {
 		opacity: 0.5;
@@ -223,7 +268,21 @@
 		opacity: 0.8;
 	}
 
-	/* Seats. Opponents float at the edges of the middle band. */
+	/* Opponents row across the top. */
+	.opponents {
+		display: flex;
+		justify-content: space-around;
+		align-items: flex-start;
+		gap: 0.5rem;
+		padding: 0.25rem 0.2rem 0;
+		flex-wrap: wrap;
+	}
+	.opp {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.2rem;
+	}
 	.seat-label {
 		font-size: 0.75rem;
 		font-weight: 700;
@@ -244,104 +303,62 @@
 		display: inline-grid;
 		place-items: center;
 	}
-
-	.seat.active .seat-label {
+	.opp.active .seat-label {
 		opacity: 1;
 		color: var(--drop-ring);
 	}
-
-	.seat-2,
-	.seat-1,
-	.seat-3 {
-		position: absolute;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.2rem;
-		z-index: 2;
+	.opp.active {
+		filter: drop-shadow(0 0 0.5rem var(--drop-ring));
 	}
-	.seat-2 {
-		top: 2.6rem;
-		left: 50%;
-		transform: translateX(-50%);
-	}
-	.seat-1 {
-		left: 0.3rem;
-		top: 50%;
-		transform: translateY(-50%);
-	}
-	.seat-3 {
-		right: 0.3rem;
-		top: 50%;
-		transform: translateY(-50%);
+	.opp.sitting {
+		opacity: 0.4;
 	}
 	.backs {
 		display: flex;
 	}
-	.seat-1 .backs,
-	.seat-3 .backs {
-		flex-direction: column;
-	}
 	.back-slot {
-		margin-left: -1.1rem;
+		margin-left: -1.3rem;
 	}
 	.backs .back-slot:first-child {
 		margin-left: 0;
 	}
-	.seat-1 .back-slot,
-	.seat-3 .back-slot {
-		margin-left: 0;
-		margin-top: -2rem;
-	}
-	.seat-1 .back-slot:first-child,
-	.seat-3 .back-slot:first-child {
-		margin-top: 0;
-	}
 
-	/* Center play area */
+	/* Center play area: the current trick laid out as a centered row. */
 	.center {
-		grid-row: 2;
+		flex: 1;
 		display: grid;
 		place-items: center;
 		min-height: 0;
 	}
 	.trick {
-		position: relative;
-		width: 9rem;
-		height: 9rem;
+		display: flex;
+		justify-content: center;
+		align-items: flex-end;
+		gap: 0.4rem;
+		flex-wrap: wrap;
+		max-width: 100%;
 	}
-	.play-slot {
-		position: absolute;
-		width: 48px;
-		height: 68px;
+	.play {
+		display: grid;
+		justify-items: center;
+		gap: 0.2rem;
 	}
-	.slot-0 {
-		bottom: 0;
-		left: 50%;
-		transform: translateX(-50%);
+	.play.mine :global(.card) {
+		outline: 2px solid var(--drop-ring);
+		border-radius: var(--card-radius);
 	}
-	.slot-2 {
-		top: 0;
-		left: 50%;
-		transform: translateX(-50%);
+	.play-who {
+		font-size: 0.62rem;
+		opacity: 0.7;
+		font-weight: 600;
 	}
-	.slot-1 {
-		left: 0;
-		top: 50%;
-		transform: translateY(-50%);
-	}
-	.slot-3 {
-		right: 0;
-		top: 50%;
-		transform: translateY(-50%);
-	}
-	.play-slot :global(.card) {
+	.play :global(.card) {
 		animation: drop-in 0.22s var(--ease-out);
 	}
 	@keyframes drop-in {
 		from {
 			opacity: 0;
-			transform: scale(0.8);
+			transform: scale(0.8) translateY(-0.5rem);
 		}
 	}
 
@@ -361,8 +378,7 @@
 	}
 
 	/* Human hand */
-	.seat-0 {
-		grid-row: 3;
+	.you {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -499,12 +515,5 @@
 		background: var(--back-1);
 		color: #fff;
 		font-weight: 700;
-	}
-
-	@media (min-width: 720px) {
-		.back-slot :global(.card) {
-			--cw: 44px;
-			--ch: 62px;
-		}
 	}
 </style>

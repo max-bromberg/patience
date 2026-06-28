@@ -52,9 +52,8 @@
 	// Trick-taking controller (Euchre family). Recreated only when the game id or
 	// url seed changes; a `{#key}` around the table disposes the old timer.
 	let euchre = $derived.by(() => {
-		void trick;
 		if (!trick || gameId === undefined) return null;
-		return new EuchreController(urlSeed ?? freshSeed());
+		return new EuchreController(urlSeed ?? freshSeed(), trick.variant);
 	});
 
 	// Persist the casual game after every change; clear it once won. Reading

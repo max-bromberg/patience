@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { applyMove, newGame, runAuto, suggestMove, teamOf, type EuchreState } from './euchre';
 
 /** Play a whole game with the AI controlling the human seat too. */
-function playOut(seed: number): EuchreState {
-	let s = runAuto(newGame(seed));
+function playOut(seed: number, variant?: string): EuchreState {
+	let s = runAuto(newGame(seed, variant));
 	let guard = 0;
 	while (s.phase !== 'gameOver' && guard++ < 5000) {
 		const move = suggestMove(s);
@@ -39,6 +39,47 @@ describe('full games via AI', () => {
 		const s = playOut(2024);
 		expect(s.scores[0]).toBeLessThan(16);
 		expect(s.scores[1]).toBeLessThan(16);
+	});
+});
+
+describe('variants', () => {
+	it('2-handed deals 5 cards to two seats and terminates with a 2-team winner', () => {
+		const start = newGame(7, 'euchre2');
+		expect(start.variant.seats).toBe(2);
+		expect(start.hands).toHaveLength(2);
+		expect(start.scores).toHaveLength(2);
+		expect(start.dealer).toBe(1); // human (0) opens the bidding
+		for (const seed of [1, 4, 22, 88, 305]) {
+			const s = playOut(seed, 'euchre2');
+			expect(s.phase).toBe('gameOver');
+			expect(s.scores[s.winner!]).toBeGreaterThanOrEqual(10);
+		}
+	});
+
+	it('3-handed cutthroat scores three independent teams and terminates', () => {
+		const start = newGame(7, 'euchre3');
+		expect(start.variant.seats).toBe(3);
+		expect(start.scores).toHaveLength(3);
+		for (const seed of [2, 9, 41, 130, 777]) {
+			const s = playOut(seed, 'euchre3');
+			expect(s.phase).toBe('gameOver');
+			expect(s.winner).not.toBeNull();
+			expect(s.scores[s.winner!]).toBeGreaterThanOrEqual(10);
+			// no one can be wildly over the line
+			for (const sc of s.scores) expect(sc).toBeLessThan(16);
+		}
+	});
+
+	it('non-partner variants never let the AI go alone', () => {
+		let s = runAuto(newGame(3, 'euchre2'));
+		let guard = 0;
+		while (s.phase !== 'gameOver' && guard++ < 5000) {
+			expect(s.alone).toBe(false);
+			expect(s.sitOut).toBeNull();
+			const move = suggestMove(s);
+			if (!move) break;
+			s = runAuto(applyMove(s, move));
+		}
 	});
 });
 

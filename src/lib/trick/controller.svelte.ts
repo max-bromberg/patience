@@ -28,11 +28,13 @@ const TRICK_HOLD_MS = 950;
 export class EuchreController {
 	private cur: EuchreState = $state.raw(newGame(0));
 	private timer: ReturnType<typeof setTimeout> | null = null;
+	private readonly variantId: string;
 	/** True while the engine is auto-advancing AI turns (UI dims human controls). */
 	thinking = $state(false);
 
-	constructor(seed: number) {
-		this.cur = newGame(seed);
+	constructor(seed: number, variantId = 'euchre') {
+		this.variantId = variantId;
+		this.cur = newGame(seed, variantId);
 		this.pump();
 	}
 
@@ -103,7 +105,7 @@ export class EuchreController {
 
 	newDeal(seed: number): void {
 		this.stop();
-		this.cur = newGame(seed);
+		this.cur = newGame(seed, this.variantId);
 		sfx.deal();
 		this.pump();
 	}

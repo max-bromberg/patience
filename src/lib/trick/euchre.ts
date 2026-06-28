@@ -24,10 +24,30 @@ import {
 
 export type Phase = 'bidding1' | 'bidding2' | 'discard' | 'playing' | 'handComplete' | 'gameOver';
 
+/**
+ * A rules variant. The same state machine drives all three: a partnership
+ * 4-hand, a head-to-head 2-hand, and a 3-hand "cutthroat" where each player
+ * fends for themselves. `seats` are the active players (always seats 0…seats-1,
+ * with the human at 0); `partners` pairs seats {0,2} vs {1,3}.
+ */
+export interface EuchreVariant {
+	readonly id: string;
+	readonly seats: number; // 2 | 3 | 4
+	readonly partners: boolean;
+	readonly allowAlone: boolean;
+}
+
+export const VARIANTS: Record<string, EuchreVariant> = {
+	euchre: { id: 'euchre', seats: 4, partners: true, allowAlone: true },
+	euchre2: { id: 'euchre2', seats: 2, partners: false, allowAlone: false },
+	euchre3: { id: 'euchre3', seats: 3, partners: false, allowAlone: false }
+};
+
 export interface EuchreState {
+	readonly variant: EuchreVariant;
 	readonly seed: number;
 	readonly handNo: number;
-	readonly hands: readonly (readonly Card[])[]; // 4 seats
+	readonly hands: readonly (readonly Card[])[]; // one per active seat
 	readonly dealer: number;
 	readonly turn: number;
 	readonly phase: Phase;
@@ -39,7 +59,7 @@ export interface EuchreState {
 	readonly trick: readonly Play[];
 	readonly lastTrick: readonly Play[] | null;
 	readonly trickWins: readonly number[]; // per seat
-	readonly scores: readonly [number, number]; // [team0, team1]
+	readonly scores: readonly number[]; // per team (length = numTeams)
 	readonly log: readonly string[];
 	readonly handResult: string | null;
 	readonly winner: number | null; // winning team, or null
@@ -54,7 +74,16 @@ export type EuchreMove =
 	| { type: 'continue' };
 
 const SEATS = ['South', 'West', 'North', 'East'];
+/** Partnership team for the default 4-hand game (kept for the test surface). */
 export const teamOf = (seat: number) => seat % 2;
+
+/** Team index for a seat under a given variant: partners pair up, else each alone. */
+function teamFor(v: EuchreVariant, seat: number): number {
+	return v.partners ? seat % 2 : seat;
+}
+function numTeams(v: EuchreVariant): number {
+	return v.partners ? 2 : v.seats;
+}
 
 // --- helpers ----------------------------------------------------------------
 function note(state: EuchreState, msg: string): readonly string[] {
@@ -62,8 +91,9 @@ function note(state: EuchreState, msg: string): readonly string[] {
 }
 
 function nextSeat(state: EuchreState, seat: number): number {
-	let n = (seat + 1) % 4;
-	if (state.sitOut !== null && n === state.sitOut) n = (n + 1) % 4;
+	const n0 = state.variant.seats;
+	let n = (seat + 1) % n0;
+	if (state.sitOut !== null && n === state.sitOut) n = (n + 1) % n0;
 	return n;
 }
 
@@ -83,19 +113,21 @@ function handTrumpPoints(hand: readonly Card[], trump: Suit): number {
 	return pts;
 }
 
-function deal(seed: number, handNo: number, dealer: number): EuchreState {
+function deal(v: EuchreVariant, seed: number, handNo: number, dealer: number): EuchreState {
+	const n = v.seats;
 	const deck = shuffle(euchreDeck(), mulberry32(seed + handNo * 7919 + 1));
-	const hands: Card[][] = [[], [], [], []];
+	const hands: Card[][] = Array.from({ length: n }, () => []);
 	let k = 0;
 	for (let round = 0; round < 5; round++)
-		for (let s = 0; s < 4; s++) hands[(dealer + 1 + s) % 4].push(deck[k++]);
+		for (let s = 0; s < n; s++) hands[(dealer + 1 + s) % n].push(deck[k++]);
 	const upCard = deck[k];
 	return {
+		variant: v,
 		seed,
 		handNo,
 		hands,
 		dealer,
-		turn: (dealer + 1) % 4,
+		turn: (dealer + 1) % n,
 		phase: 'bidding1',
 		upCard,
 		trump: null,
@@ -104,8 +136,8 @@ function deal(seed: number, handNo: number, dealer: number): EuchreState {
 		sitOut: null,
 		trick: [],
 		lastTrick: null,
-		trickWins: [0, 0, 0, 0],
-		scores: [0, 0],
+		trickWins: Array.from({ length: n }, () => 0),
+		scores: Array.from({ length: numTeams(v) }, () => 0),
 		log: [],
 		handResult: null,
 		winner: null
@@ -120,9 +152,9 @@ const ALONE_THRESHOLD = 3.6;
 function aiBid1(state: EuchreState, seat: number): EuchreMove {
 	const trump = state.upCard!.suit;
 	// the dealer's team will receive the up-card
-	const dealerTeam = teamOf(state.dealer);
+	const dealerTeam = teamFor(state.variant, state.dealer);
 	let pts = handTrumpPoints(state.hands[seat], trump);
-	if (teamOf(seat) === dealerTeam)
+	if (teamFor(state.variant, seat) === dealerTeam)
 		pts += 0.4; // up-card helps our side
 	else pts -= 0.3;
 	if (pts >= ORDER_THRESHOLD) return { type: 'order', alone: pts >= ALONE_THRESHOLD };
@@ -181,7 +213,7 @@ function aiPlay(state: EuchreState, seat: number): string {
 	// who is currently winning?
 	const winIdx = trickWinnerIndex(state.trick, trump);
 	const winner = state.trick[winIdx].player;
-	const partnerWinning = teamOf(winner) === teamOf(seat);
+	const partnerWinning = teamFor(state.variant, winner) === teamFor(state.variant, seat);
 	const led = effectiveSuit(state.trick[0].card, trump);
 	const bestSoFar = cardStrength(state.trick[winIdx].card, trump, led);
 
@@ -214,12 +246,18 @@ function startPlaying(state: EuchreState): EuchreState {
 	return {
 		...state,
 		phase: 'playing',
-		turn: (state.dealer + 1) % 4,
+		turn: (state.dealer + 1) % state.variant.seats,
 		trick: []
 	};
 }
 
-function applyOrder(state: EuchreState, seat: number, alone: boolean): EuchreState {
+/** Where the partner sits when going alone (4-hand only). */
+function aloneSitOut(state: EuchreState, seat: number, alone: boolean): number | null {
+	return alone && state.variant.partners ? (seat + 2) % state.variant.seats : null;
+}
+
+function applyOrder(state: EuchreState, seat: number, aloneReq: boolean): EuchreState {
+	const alone = aloneReq && state.variant.allowAlone;
 	const trump = state.upCard!.suit;
 	// dealer picks up the up-card
 	const hands = state.hands.map((h, i) => (i === state.dealer ? [...h, state.upCard!] : h));
@@ -229,7 +267,7 @@ function applyOrder(state: EuchreState, seat: number, alone: boolean): EuchreSta
 		trump,
 		maker: seat,
 		alone,
-		sitOut: alone ? (seat + 2) % 4 : null,
+		sitOut: aloneSitOut(state, seat, alone),
 		upCard: null,
 		log: note(state, `${SEATS[seat]} orders up ${trump}${alone ? ' (alone)' : ''}.`),
 		phase: 'discard',
@@ -244,13 +282,14 @@ function applyOrder(state: EuchreState, seat: number, alone: boolean): EuchreSta
 	return s;
 }
 
-function applyCall(state: EuchreState, seat: number, suit: Suit, alone: boolean): EuchreState {
+function applyCall(state: EuchreState, seat: number, suit: Suit, aloneReq: boolean): EuchreState {
+	const alone = aloneReq && state.variant.allowAlone;
 	const s: EuchreState = {
 		...state,
 		trump: suit,
 		maker: seat,
 		alone,
-		sitOut: alone ? (seat + 2) % 4 : null,
+		sitOut: aloneSitOut(state, seat, alone),
 		upCard: null,
 		log: note(state, `${SEATS[seat]} calls ${suit}${alone ? ' (alone)' : ''}.`)
 	};
@@ -259,24 +298,30 @@ function applyCall(state: EuchreState, seat: number, suit: Suit, alone: boolean)
 
 /** Score a completed hand and set up the next one (or game over). */
 function scoreHand(state: EuchreState): EuchreState {
-	const makerTeam = teamOf(state.maker!);
-	const team0 = state.trickWins[0] + state.trickWins[2];
-	const team1 = state.trickWins[1] + state.trickWins[3];
-	const makerCount = makerTeam === 0 ? team0 : team1;
+	const v = state.variant;
+	const makerTeam = teamFor(v, state.maker!);
+	// tricks won per team
+	const teamTricks = Array.from({ length: numTeams(v) }, () => 0);
+	for (let seat = 0; seat < v.seats; seat++) teamTricks[teamFor(v, seat)] += state.trickWins[seat];
+	const makerCount = teamTricks[makerTeam];
+	const ours = makerTeam === 0; // team 0 is always the human's side
 
-	const scores: [number, number] = [state.scores[0], state.scores[1]];
+	const scores = [...state.scores];
 	let result: string;
 	if (makerCount >= 3) {
 		const pts = state.alone && makerCount === 5 ? 4 : makerCount === 5 ? 2 : 1;
 		scores[makerTeam] += pts;
-		result = `${makerTeam === 0 ? 'Your team' : 'Opponents'} made it — ${makerCount} tricks (+${pts}).`;
+		result = `${ours ? 'You' : 'Opponents'} made it — ${makerCount} tricks (+${pts}).`;
 	} else {
-		const other = (1 - makerTeam) as 0 | 1;
-		scores[other] += 2;
-		result = `Euchred! ${other === 0 ? 'Your team' : 'Opponents'} takes +2.`;
+		// Euchred: in partnership/2-hand the single other team takes +2; in a
+		// 3-hand cutthroat both defenders score +2.
+		for (let t = 0; t < numTeams(v); t++) if (t !== makerTeam) scores[t] += 2;
+		result = ours ? 'Euchred! Opponents take +2.' : 'Euchred! You take +2.';
 	}
 
-	const winner = scores[0] >= 10 ? 0 : scores[1] >= 10 ? 1 : null;
+	let winner: number | null = null;
+	for (let t = 0; t < scores.length; t++)
+		if (scores[t] >= 10) winner = winner === null ? t : winner;
 	return {
 		...state,
 		scores,
@@ -306,7 +351,8 @@ function resolveTrick(state: EuchreState): EuchreState {
 }
 
 function trickSize(state: EuchreState): number {
-	return state.alone ? 3 : 4;
+	// active players this trick: everyone, minus a partner sitting out when alone
+	return state.variant.seats - (state.sitOut !== null ? 1 : 0);
 }
 function trickIsFull(state: EuchreState): boolean {
 	return state.trick.length === trickSize(state);
@@ -366,23 +412,26 @@ export function needsHuman(state: EuchreState): boolean {
 }
 
 function passBidding(state: EuchreState): EuchreState {
+	const n = state.variant.seats;
 	const s = { ...state, log: note(state, `${SEATS[state.turn]} passes.`) };
 	if (state.phase === 'bidding1') {
 		// after the dealer passes, move to round 2
 		if (state.turn === state.dealer) {
-			return { ...s, phase: 'bidding2', turn: (state.dealer + 1) % 4 };
+			return { ...s, phase: 'bidding2', turn: (state.dealer + 1) % n };
 		}
-		return { ...s, turn: (state.turn + 1) % 4 };
+		return { ...s, turn: (state.turn + 1) % n };
 	}
 	// bidding2: dealer must call, so a pass here only happens for non-dealers
-	return { ...s, turn: (state.turn + 1) % 4 };
+	return { ...s, turn: (state.turn + 1) % n };
 }
 
 // --- public API -------------------------------------------------------------
-export function newGame(seed: number): EuchreState {
-	// dealer East (3) → turn starts at South (0), so the human bids first; no AI
-	// pre-steps are needed. The controller drains stepAuto on a timer thereafter.
-	return deal(seed, 0, 3);
+export function newGame(seed: number, variantId = 'euchre'): EuchreState {
+	const v = VARIANTS[variantId] ?? VARIANTS.euchre;
+	// The seat left of the dealer bids first; dealing the button to the last seat
+	// means the human (seat 0) always opens the bidding. No AI pre-steps needed —
+	// the controller drains stepAuto on a timer thereafter.
+	return deal(v, seed, 0, v.seats - 1);
 }
 
 export function applyMove(state: EuchreState, move: EuchreMove): EuchreState {
@@ -419,7 +468,7 @@ export function applyMove(state: EuchreState, move: EuchreMove): EuchreState {
 		}
 		case 'continue':
 			if (s.phase !== 'handComplete') return state;
-			s = deal(s.seed, s.handNo + 1, (s.dealer + 1) % 4);
+			s = deal(s.variant, s.seed, s.handNo + 1, (s.dealer + 1) % s.variant.seats);
 			s = { ...s, scores: state.scores };
 			break;
 	}
