@@ -1,0 +1,58 @@
+/**
+ * Signature theme tokens. v1 ships ONE warm, cute felt-table look. Everything
+ * here is a CSS custom property so alternate themes (light/dark, felt colors —
+ * see docs/themes-backlog.md) can be slotted in later by overriding `:root`
+ * without touching components.
+ */
+
+:root {
+	/* Table / felt */
+	--felt-1: #2f7d57;
+	--felt-2: #1f5e40;
+	--felt-3: #184a32;
+	--table-bg: radial-gradient(120% 90% at 50% 0%, var(--felt-1), var(--felt-2) 55%, var(--felt-3));
+
+	/* Cards */
+	--card-bg: #fffdf8;
+	--card-ink-black: #2b2b33;
+	--card-ink-red: #c8324a;
+	--card-radius: 0.42em; /* relative to card width via font-size trick */
+	--card-shadow: 0 2px 5px rgba(0, 0, 0, 0.28);
+	--card-shadow-lift: 0 10px 22px rgba(0, 0, 0, 0.38);
+	--card-border: rgba(0, 0, 0, 0.12);
+
+	/* Card back */
+	--back-1: #b9472f;
+	--back-2: #8f3320;
+	--back-accent: rgba(255, 255, 255, 0.16);
+
+	/* Pile slots */
+	--slot-outline: rgba(255, 255, 255, 0.22);
+	--slot-fill: rgba(0, 0, 0, 0.12);
+	--slot-glyph: rgba(255, 255, 255, 0.32);
+
+	/* Interaction feedback */
+	--drop-ring: #ffe39a;
+	--drop-ring-glow: 0 0 0 3px rgba(255, 227, 154, 0.55);
+
+	/* Warm UI surfaces (top bar, buttons) */
+	--ui-text: #fdfaf3;
+	--ui-muted: #cfe3d4;
+	--ui-surface: rgba(0, 0, 0, 0.22);
+	--ui-surface-hover: rgba(0, 0, 0, 0.34);
+
+	/* Type */
+	--font-rounded: ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif;
+
+	/* Motion */
+	--flip-ms: 260ms;
+	--snap-ms: 220ms;
+	--ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--flip-ms: 0ms;
+		--snap-ms: 0ms;
+	}
+}

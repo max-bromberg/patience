@@ -5,3 +5,4 @@ export * from './card';
 export * from './deck';
 export * from './pile';
 export * from './session';
+export * from './view';
