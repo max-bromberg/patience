@@ -19,7 +19,7 @@
 	const FAN_TIGHT = 0.15; // face-down fan step (down)
 	const FAN_OPEN_X = 0.36; // face-up fan step (right) as fraction of card width
 	const FAN_TIGHT_X = 0.2;
-	const MIN_W = 40;
+	const MIN_W = 30; // wide games (Spider's 10 columns) still fit a phone
 	const MAX_W = 168; // let the board fill the width on desktop
 	const TAP_THRESHOLD = 8; // px of travel before a press becomes a drag
 	const DOUBLE_TAP_MS = 320;
