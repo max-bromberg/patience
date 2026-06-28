@@ -420,8 +420,13 @@
 		border-radius: 1rem;
 		text-decoration: none;
 		color: inherit;
-		background: linear-gradient(120deg, rgba(201, 154, 58, 0.28), rgba(0, 0, 0, 0.25));
-		border: 1px solid rgba(255, 227, 154, 0.3);
+		/* tint with the active theme accent so it recolors with the theme */
+		background: linear-gradient(
+			120deg,
+			color-mix(in srgb, var(--drop-ring) 28%, transparent),
+			rgba(0, 0, 0, 0.25)
+		);
+		border: 1px solid color-mix(in srgb, var(--drop-ring) 38%, transparent);
 		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
 		transition: transform 0.16s var(--ease-out);
 	}
