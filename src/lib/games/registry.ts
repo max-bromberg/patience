@@ -5,9 +5,11 @@
  */
 
 import type { AnyGame, Game, GameMeta } from '$lib/engine';
+import { fortythieves } from './fortythieves';
 import { freecell } from './freecell';
 import { golf } from './golf';
 import { klondike, klondikeDraw1 } from './klondike';
+import { scorpion } from './scorpion';
 import { spider1, spider2, spider4 } from './spider';
 import { tripeaks } from './tripeaks';
 import { yukon } from './yukon';
@@ -27,6 +29,8 @@ export const games: readonly AnyGame[] = [
 	toAnyGame(klondikeDraw1),
 	toAnyGame(freecell),
 	toAnyGame(yukon),
+	toAnyGame(fortythieves),
+	toAnyGame(scorpion),
 	toAnyGame(spider1),
 	toAnyGame(spider2),
 	toAnyGame(spider4),
