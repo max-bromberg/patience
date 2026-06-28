@@ -93,6 +93,11 @@
 	--back-2: #214f63;
 }
 
+/* Custom theme: felt/back vars are set inline on <html> from the user's picks. */
+:root[data-theme='custom'] {
+	/* intentionally empty — inline custom properties drive this theme */
+}
+
 @media (prefers-reduced-motion: reduce) {
 	:root {
 		--flip-ms: 0ms;

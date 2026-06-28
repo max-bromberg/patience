@@ -5,6 +5,7 @@
 	import type { GameMeta } from '$lib/engine';
 	import { catalog, getGame } from '$lib/games/registry';
 	import { THEMES } from '$lib/theme/themes';
+	import { VIBES } from '$lib/theme/vibes';
 	import { daily } from '$lib/storage/daily.svelte';
 	import { settings } from '$lib/storage/settings.svelte';
 
@@ -87,8 +88,8 @@
 			<section class="family">
 				<h2>{titleCase(family)}</h2>
 				<ul class="grid">
-					{#each metas as meta (meta.id)}
-						<li>
+					{#each metas as meta, i (meta.id)}
+						<li style="--d:{i}">
 							<a class="tile" href={resolve(`/play/${meta.id}`)}>
 								<span class="art" aria-hidden="true">
 									<span class="mini m1"></span>
@@ -132,6 +133,55 @@
 								aria-pressed={settings.theme === t.id}
 							>
 								{#if settings.theme === t.id}<span class="check">✓</span>{/if}
+							</button>
+						{/each}
+						<button
+							class="swatch custom"
+							class:selected={settings.theme === 'custom'}
+							onclick={() => (settings.theme = 'custom')}
+							aria-label="Custom colors"
+							aria-pressed={settings.theme === 'custom'}
+						>
+							{#if settings.theme === 'custom'}<span class="check">✓</span>{:else}<span class="plus"
+									>🎨</span
+								>{/if}
+						</button>
+					</div>
+
+					{#if settings.theme === 'custom'}
+						<div class="custom-colors">
+							<label>
+								<span>Felt</span>
+								<input
+									type="color"
+									value={settings.custom.felt}
+									oninput={(e) => settings.setCustom({ felt: e.currentTarget.value })}
+								/>
+							</label>
+							<label>
+								<span>Card back</span>
+								<input
+									type="color"
+									value={settings.custom.back}
+									oninput={(e) => settings.setCustom({ back: e.currentTarget.value })}
+								/>
+							</label>
+						</div>
+					{/if}
+				</section>
+
+				<section>
+					<h3>Vibes</h3>
+					<div class="vibes-list">
+						{#each VIBES as v (v.id)}
+							<button
+								class="vibe-chip"
+								class:on={settings.vibe(v.id)}
+								onclick={() => settings.toggleVibe(v.id)}
+								aria-pressed={settings.vibe(v.id)}
+								title={v.description}
+							>
+								<span class="vibe-emoji">{v.emoji}</span>{v.name}
 							</button>
 						{/each}
 					</div>
@@ -302,6 +352,19 @@
 		transition:
 			transform 0.16s var(--ease-out),
 			background 0.16s var(--ease-out);
+		animation: tile-in 0.45s var(--ease-out) backwards;
+		animation-delay: calc(var(--d, 0) * 55ms);
+	}
+	@keyframes tile-in {
+		from {
+			opacity: 0;
+			transform: translateY(12px) scale(0.98);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.tile {
+			animation: none;
+		}
 	}
 	.tile:hover {
 		transform: translateY(-3px);
@@ -457,6 +520,66 @@
 		border-color: var(--card-ink-black);
 		outline: 2px solid var(--card-ink-black);
 		outline-offset: 1px;
+	}
+	.swatch.custom {
+		background: conic-gradient(from 0deg, #ff4d6d, #ffd166, #06d6a0, #4cc9f0, #b388ff, #ff4d6d);
+	}
+	.swatch .plus {
+		font-size: 1.1rem;
+	}
+
+	.custom-colors {
+		display: flex;
+		gap: 1.25rem;
+		margin-top: 0.9rem;
+	}
+	.custom-colors label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+	.custom-colors input[type='color'] {
+		width: 2.4rem;
+		height: 2rem;
+		border: 1px solid rgba(0, 0, 0, 0.15);
+		border-radius: 0.5rem;
+		background: none;
+		cursor: pointer;
+		padding: 0;
+	}
+
+	.vibes-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+	.vibe-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-family: inherit;
+		font-size: 0.82rem;
+		font-weight: 600;
+		padding: 0.4rem 0.7rem;
+		border-radius: 999px;
+		border: 1.5px solid rgba(0, 0, 0, 0.14);
+		background: #f3f1ea;
+		color: #6a6a72;
+		cursor: pointer;
+		transition:
+			background 0.15s var(--ease-out),
+			color 0.15s var(--ease-out),
+			border-color 0.15s var(--ease-out);
+	}
+	.vibe-chip.on {
+		background: var(--felt-1);
+		border-color: var(--felt-1);
+		color: #fff;
+	}
+	.vibe-emoji {
+		font-size: 0.95rem;
 	}
 	.row {
 		display: flex;

@@ -4,6 +4,7 @@
 	import { dateKey, previousKey } from '$lib/daily';
 	import { getGame } from '$lib/games/registry';
 	import { GameController, Table } from '$lib/render';
+	import Confetti from '$lib/render/Confetti.svelte';
 	import { sfx } from '$lib/render/sound';
 	import { daily } from '$lib/storage/daily.svelte';
 	import { clearProgress, loadProgress, saveProgress } from '$lib/storage/resume';
@@ -119,6 +120,7 @@
 		</div>
 
 		{#if won}
+			<Confetti />
 			<div class="win" role="status">
 				<div class="win-card">
 					<h2>You won! 🎉</h2>
