@@ -86,6 +86,23 @@
 		box-sizing: border-box;
 	}
 
+	/*
+	 * Belt-and-suspenders backface culling. Some engines (notably WebKit, and
+	 * Chrome when the element has overflow/border-radius/box-shadow) fail to hide
+	 * the rotated-away side, leaving the face's suit + rank faintly bleeding
+	 * through the back. So we also hard-hide whichever side is facing away — but
+	 * only AFTER the flip finishes (transition-delay = flip duration), so the
+	 * spinning side is still visible mid-animation.
+	 */
+	.inner.down .face {
+		visibility: hidden;
+		transition: visibility 0s linear var(--flip-ms);
+	}
+	.inner:not(.down) .back {
+		visibility: hidden;
+		transition: visibility 0s linear var(--flip-ms);
+	}
+
 	.face {
 		background: var(--card-face-bg, var(--card-bg));
 		border: var(--card-face-border, 0.012em solid var(--card-border));
