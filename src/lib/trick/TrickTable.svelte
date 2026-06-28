@@ -15,11 +15,24 @@
 		if (isHumanPlay && v.playable.includes(card.id)) controller.play(card.id);
 	}
 
-	// Heavier overlap as the hand grows so up to 13 cards fit on a phone.
-	const handOverlap = $derived(v.hand.length > 8 ? '-1.7rem' : '-0.8rem');
+	// Responsive scale: 1 on a phone (the dialed-in baseline), growing toward 1.7
+	// on desktop so the table fills the extra real estate instead of floating tiny.
+	let feltW = $state(0);
+	const scale = $derived(Math.min(1.85, Math.max(1, feltW / 460)));
+	const px = (base: number) => Math.round(base * scale);
+	const handW = $derived(px(52));
+	const handH = $derived(px(73));
+	const trickW = $derived(px(46));
+	const trickH = $derived(px(65));
+	const backW = $derived(px(28));
+	const backH = $derived(px(40));
+
+	// Heavier overlap as the hand grows so up to 13 cards fit; scales with the card.
+	const handOverlap = $derived(`${(v.hand.length > 8 ? -1.7 : -0.8) * scale}rem`);
+	const backOverlap = $derived(`${-Math.round(backW * 0.78)}px`);
 </script>
 
-<div class="felt">
+<div class="felt" bind:clientWidth={feltW} style:--sc={scale}>
 	<!-- Scoreboard + trump -->
 	<div class="hud">
 		<div class="score">
@@ -43,13 +56,13 @@
 					{#if opp.bid !== undefined && opp.bid !== null}<span class="chip bid">{opp.bid}</span
 						>{/if}
 				</div>
-				<div class="backs">
+				<div class="backs" style:--backov={backOverlap}>
 					{#each Array.from({ length: opp.count }, (_, i) => i) as i (i)}
 						<div class="back-slot">
 							<CardView
 								card={{ id: `b${i}`, suit: 'spades', rank: 2, faceUp: false }}
-								w={28}
-								h={40}
+								w={backW}
+								h={backH}
 							/>
 						</div>
 					{/each}
@@ -65,7 +78,7 @@
 			<div class="trick">
 				{#each v.trick as play (play.player)}
 					<div class="play" class:mine={play.player === 0}>
-						<CardView card={play.card} w={46} h={65} />
+						<CardView card={play.card} w={trickW} h={trickH} />
 						<span class="play-who">{play.name}</span>
 					</div>
 				{/each}
@@ -88,7 +101,7 @@
 					disabled={!can}
 					aria-label="{card.rank} of {card.suit}"
 				>
-					<CardView {card} w={52} h={73} />
+					<CardView {card} w={handW} h={handH} />
 				</button>
 			{/each}
 		</div>
@@ -135,7 +148,7 @@
 		justify-content: space-between;
 		align-items: center;
 		font-weight: 700;
-		font-size: 0.85rem;
+		font-size: calc(0.85rem * var(--sc, 1));
 		padding: 0 0.3rem;
 	}
 	.score {
@@ -172,9 +185,12 @@
 		display: flex;
 		justify-content: space-around;
 		align-items: flex-start;
-		gap: 0.4rem;
-		padding: 0.25rem 0.2rem 0;
+		gap: calc(0.4rem * var(--sc, 1));
+		padding: calc(0.4rem * var(--sc, 1)) 0.2rem 0;
 		flex-wrap: wrap;
+		max-width: 1100px;
+		margin: 0 auto;
+		width: 100%;
 	}
 	.opp {
 		display: flex;
@@ -183,7 +199,7 @@
 		gap: 0.15rem;
 	}
 	.seat-label {
-		font-size: 0.72rem;
+		font-size: calc(0.72rem * var(--sc, 1));
 		font-weight: 700;
 		opacity: 0.85;
 		display: inline-flex;
@@ -217,13 +233,13 @@
 		display: flex;
 	}
 	.back-slot {
-		margin-left: -1.35rem;
+		margin-left: var(--backov, -1.35rem);
 	}
 	.backs .back-slot:first-child {
 		margin-left: 0;
 	}
 	.taken {
-		font-size: 0.65rem;
+		font-size: calc(0.65rem * var(--sc, 1));
 		opacity: 0.7;
 		font-weight: 700;
 	}
@@ -238,21 +254,21 @@
 		display: flex;
 		justify-content: center;
 		align-items: flex-end;
-		gap: 0.4rem;
+		gap: calc(0.55rem * var(--sc, 1));
 		flex-wrap: wrap;
 		max-width: 100%;
 	}
 	.play {
 		display: grid;
 		justify-items: center;
-		gap: 0.2rem;
+		gap: calc(0.2rem * var(--sc, 1));
 	}
 	.play.mine :global(.card) {
 		outline: 2px solid var(--drop-ring);
 		border-radius: var(--card-radius);
 	}
 	.play-who {
-		font-size: 0.62rem;
+		font-size: calc(0.62rem * var(--sc, 1));
 		opacity: 0.7;
 		font-weight: 600;
 	}
@@ -266,11 +282,11 @@
 		}
 	}
 	.idle-banner {
-		font-size: 0.85rem;
+		font-size: calc(0.9rem * var(--sc, 1));
 		opacity: 0.7;
 		font-weight: 600;
 		text-align: center;
-		max-width: 18rem;
+		max-width: 22rem;
 	}
 
 	.you {
@@ -310,19 +326,19 @@
 	.panel {
 		position: absolute;
 		left: 50%;
-		bottom: 7rem;
+		bottom: calc(6.5rem * var(--sc, 1));
 		transform: translateX(-50%);
 		background: rgba(0, 0, 0, 0.8);
 		color: var(--ui-text);
 		border-radius: 1rem;
-		padding: 0.85rem 1.1rem;
+		padding: calc(0.85rem * var(--sc, 1)) calc(1.1rem * var(--sc, 1));
 		display: grid;
 		justify-items: center;
 		gap: 0.55rem;
 		box-shadow: var(--card-shadow-lift);
 		z-index: 10;
 		text-align: center;
-		min-width: 13rem;
+		min-width: calc(13rem * var(--sc, 1));
 		max-width: calc(100vw - 1.5rem);
 		animation: rise 0.2s var(--ease-out);
 	}
@@ -331,11 +347,11 @@
 	}
 	.panel.win h2 {
 		margin: 0;
-		font-size: 1.4rem;
+		font-size: calc(1.4rem * var(--sc, 1));
 	}
 	.panel p {
 		margin: 0;
-		font-size: 0.92rem;
+		font-size: calc(0.92rem * var(--sc, 1));
 	}
 	@keyframes rise {
 		from {
@@ -350,14 +366,14 @@
 		justify-content: center;
 	}
 	.bid-btn {
-		min-width: 2.1rem;
-		height: 2.1rem;
+		min-width: calc(2.1rem * var(--sc, 1));
+		height: calc(2.1rem * var(--sc, 1));
 		border-radius: 0.6rem;
 		border: none;
 		background: var(--card-bg);
 		color: #1a1a1a;
 		font-weight: 800;
-		font-size: 0.95rem;
+		font-size: calc(0.95rem * var(--sc, 1));
 		cursor: pointer;
 		transition: transform 0.1s var(--ease-out);
 	}

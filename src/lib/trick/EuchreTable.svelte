@@ -64,9 +64,28 @@
 	// During the brief pause after a trick fills, `trick` is cleared and the
 	// completed trick lives in `lastTrick` — keep showing it so it doesn't blink.
 	const shownTrick = $derived(s.trick.length > 0 ? s.trick : (s.lastTrick ?? []));
+
+	// Responsive scale: 1 on a phone (the dialed-in baseline), up to 1.85 on
+	// desktop so the table fills the room instead of floating tiny in the centre.
+	let feltW = $state(0);
+	const scale = $derived(Math.min(1.85, Math.max(1, feltW / 460)));
+	const px = (base: number) => Math.round(base * scale);
+	const handW = $derived(px(58));
+	const handH = $derived(px(82));
+	const trickW = $derived(px(46));
+	const trickH = $derived(px(65));
+	const backW = $derived(px(30));
+	const backH = $derived(px(42));
+	// The up-card grows less than the rest so it stays clear of the bidding panel
+	// that floats just below it on desktop (unchanged at mobile scale = 1).
+	const upScale = $derived(Math.min(1.3, scale));
+	const upW = $derived(Math.round(52 * upScale));
+	const upH = $derived(Math.round(74 * upScale));
+	const backOverlap = $derived(`${-Math.round(backW * 0.73)}px`);
+	const handOverlap = $derived(`${-0.8 * scale}rem`);
 </script>
 
-<div class="felt">
+<div class="felt" bind:clientWidth={feltW} style:--sc={scale}>
 	<!-- Scoreboard + trump -->
 	<div class="hud">
 		<div class="score">
@@ -95,10 +114,10 @@
 					{seatName[seat]}
 					{#if seat === s.dealer}<span class="deal-chip">D</span>{/if}
 				</div>
-				<div class="backs">
+				<div class="backs" style:--backov={backOverlap}>
 					{#each s.hands[seat] as card (card.id)}
 						<div class="back-slot">
-							<CardView card={{ ...card, faceUp: false }} w={30} h={42} />
+							<CardView card={{ ...card, faceUp: false }} w={backW} h={backH} />
 						</div>
 					{/each}
 				</div>
@@ -110,14 +129,14 @@
 	<div class="center">
 		{#if s.upCard && (s.phase === 'bidding1' || s.phase === 'bidding2')}
 			<div class="upcard" class:dim={s.phase === 'bidding2'}>
-				<CardView card={s.upCard} w={52} h={74} />
+				<CardView card={s.upCard} w={upW} h={upH} />
 				<span class="upcard-tag">{s.phase === 'bidding2' ? 'turned down' : 'up-card'}</span>
 			</div>
 		{:else if shownTrick.length > 0}
 			<div class="trick">
 				{#each shownTrick as play (play.player)}
 					<div class="play" class:mine={play.player === 0}>
-						<CardView card={play.card} w={46} h={65} />
+						<CardView card={play.card} w={trickW} h={trickH} />
 						<span class="play-who">{play.player === 0 ? 'You' : seatName[play.player]}</span>
 					</div>
 				{/each}
@@ -127,7 +146,7 @@
 
 	<!-- Human hand -->
 	<div class="you" class:active={s.turn === 0 && !controller.thinking}>
-		<div class="hand" role="group" aria-label="Your hand">
+		<div class="hand" role="group" aria-label="Your hand" style:--ov={handOverlap}>
 			{#each s.hands[0] as card (card.id)}
 				{@const can = isHumanDiscard || (isHumanPlay && playable.includes(card.id))}
 				<button
@@ -138,7 +157,7 @@
 					disabled={!can}
 					aria-label="{card.rank} of {card.suit}"
 				>
-					<CardView {card} w={58} h={82} />
+					<CardView {card} w={handW} h={handH} />
 				</button>
 			{/each}
 		</div>
@@ -228,7 +247,7 @@
 		justify-content: space-between;
 		align-items: center;
 		font-weight: 700;
-		font-size: 0.9rem;
+		font-size: calc(0.9rem * var(--sc, 1));
 		padding: 0 0.4rem;
 	}
 	.score {
@@ -255,7 +274,7 @@
 		background: var(--ui-surface);
 	}
 	.trump .glyph {
-		font-size: 1.15rem;
+		font-size: calc(1.15rem * var(--sc, 1));
 		line-height: 1;
 	}
 	.trump.red .glyph {
@@ -273,9 +292,12 @@
 		display: flex;
 		justify-content: space-around;
 		align-items: flex-start;
-		gap: 0.5rem;
-		padding: 0.25rem 0.2rem 0;
+		gap: calc(0.5rem * var(--sc, 1));
+		padding: calc(0.4rem * var(--sc, 1)) 0.2rem 0;
 		flex-wrap: wrap;
+		max-width: 1100px;
+		margin: 0 auto;
+		width: 100%;
 	}
 	.opp {
 		display: flex;
@@ -284,7 +306,7 @@
 		gap: 0.2rem;
 	}
 	.seat-label {
-		font-size: 0.75rem;
+		font-size: calc(0.75rem * var(--sc, 1));
 		font-weight: 700;
 		opacity: 0.85;
 		display: inline-flex;
@@ -317,7 +339,7 @@
 		display: flex;
 	}
 	.back-slot {
-		margin-left: -1.3rem;
+		margin-left: var(--backov, -1.3rem);
 	}
 	.backs .back-slot:first-child {
 		margin-left: 0;
@@ -334,21 +356,21 @@
 		display: flex;
 		justify-content: center;
 		align-items: flex-end;
-		gap: 0.4rem;
+		gap: calc(0.55rem * var(--sc, 1));
 		flex-wrap: wrap;
 		max-width: 100%;
 	}
 	.play {
 		display: grid;
 		justify-items: center;
-		gap: 0.2rem;
+		gap: calc(0.2rem * var(--sc, 1));
 	}
 	.play.mine :global(.card) {
 		outline: 2px solid var(--drop-ring);
 		border-radius: var(--card-radius);
 	}
 	.play-who {
-		font-size: 0.62rem;
+		font-size: calc(0.62rem * var(--sc, 1));
 		opacity: 0.7;
 		font-weight: 600;
 	}
@@ -365,13 +387,16 @@
 	.upcard {
 		display: grid;
 		justify-items: center;
-		gap: 0.35rem;
+		gap: calc(0.35rem * var(--sc, 1));
+		/* sit near the top of the play area so the bidding panel has room below */
+		align-self: start;
+		margin-top: 0.25rem;
 	}
 	.upcard.dim {
 		opacity: 0.5;
 	}
 	.upcard-tag {
-		font-size: 0.65rem;
+		font-size: calc(0.65rem * var(--sc, 1));
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		opacity: 0.8;
@@ -393,7 +418,7 @@
 		background: none;
 		border: none;
 		padding: 0;
-		margin-left: -0.8rem;
+		margin-left: var(--ov, -0.8rem);
 		cursor: default;
 		transition: transform 0.14s var(--ease-out);
 		-webkit-tap-highlight-color: transparent;
@@ -426,7 +451,7 @@
 	.panel {
 		position: absolute;
 		left: 50%;
-		bottom: 7.5rem;
+		bottom: calc(7rem * var(--sc, 1));
 		transform: translateX(-50%);
 		background: rgba(0, 0, 0, 0.78);
 		color: var(--ui-text);
@@ -442,18 +467,18 @@
 		animation: rise 0.2s var(--ease-out);
 	}
 	.panel.slim {
-		bottom: 8.5rem;
+		bottom: calc(8rem * var(--sc, 1));
 	}
 	.panel.win {
 		bottom: 40%;
 	}
 	.panel.win h2 {
 		margin: 0;
-		font-size: 1.4rem;
+		font-size: calc(1.4rem * var(--sc, 1));
 	}
 	.panel p {
 		margin: 0;
-		font-size: 0.95rem;
+		font-size: calc(0.95rem * var(--sc, 1));
 	}
 	.panel b.red {
 		color: #ff6b7d;
@@ -480,13 +505,13 @@
 		gap: 0.4rem;
 	}
 	.suit-btn {
-		width: 2.6rem;
-		height: 2.6rem;
+		width: calc(2.6rem * var(--sc, 1));
+		height: calc(2.6rem * var(--sc, 1));
 		border-radius: 0.7rem;
 		border: none;
 		background: var(--card-bg);
 		color: #1a1a1a;
-		font-size: 1.5rem;
+		font-size: calc(1.5rem * var(--sc, 1));
 		cursor: pointer;
 		transition: transform 0.1s var(--ease-out);
 	}

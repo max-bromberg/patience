@@ -20,7 +20,7 @@
 	const FAN_OPEN_X = 0.36; // face-up fan step (right) as fraction of card width
 	const FAN_TIGHT_X = 0.2;
 	const MIN_W = 30; // wide games (Spider's 10 columns) still fit a phone
-	const MAX_W = 168; // let the board fill the width on desktop
+	const MAX_W = 120; // cap card size so desktop isn't oversized (mobile never hits this)
 	const TAP_THRESHOLD = 8; // px of travel before a press becomes a drag
 	const DOUBLE_TAP_MS = 320;
 
