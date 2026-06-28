@@ -18,6 +18,8 @@ export interface CustomColors {
 
 interface SettingsData {
 	sound: boolean;
+	music: boolean;
+	musicVolume: number;
 	theme: string;
 	face: string;
 	custom: CustomColors;
@@ -34,6 +36,8 @@ function defaultVibes(): Record<string, boolean> {
 class Settings {
 	#data = $state<SettingsData>({
 		sound: true,
+		music: false,
+		musicVolume: 0.5,
 		theme: DEFAULT_THEME,
 		face: DEFAULT_FACE,
 		custom: { ...DEFAULT_CUSTOM },
@@ -44,6 +48,11 @@ class Settings {
 		const saved = readJSON<Partial<SettingsData>>(KEY, {});
 		this.#data = {
 			sound: saved.sound ?? true,
+			music: saved.music ?? false,
+			musicVolume:
+				typeof saved.musicVolume === 'number' && saved.musicVolume >= 0 && saved.musicVolume <= 1
+					? saved.musicVolume
+					: 0.5,
 			theme:
 				saved.theme && (isTheme(saved.theme) || saved.theme === 'custom')
 					? saved.theme
@@ -76,6 +85,26 @@ class Settings {
 	}
 	toggleSound(): void {
 		this.sound = !this.#data.sound;
+	}
+
+	get music(): boolean {
+		return this.#data.music;
+	}
+	set music(value: boolean) {
+		this.#data = { ...this.#data, music: value };
+		this.#persist();
+	}
+	toggleMusic(): void {
+		this.music = !this.#data.music;
+	}
+
+	get musicVolume(): number {
+		return this.#data.musicVolume;
+	}
+	set musicVolume(value: number) {
+		const v = Math.max(0, Math.min(1, value));
+		this.#data = { ...this.#data, musicVolume: v };
+		this.#persist();
 	}
 
 	get theme(): string {

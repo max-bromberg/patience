@@ -9,6 +9,7 @@
 	import { daily } from '$lib/storage/daily.svelte';
 	import { clearProgress, loadProgress, saveProgress } from '$lib/storage/resume';
 	import { settings } from '$lib/storage/settings.svelte';
+	import { stats } from '$lib/storage/stats.svelte';
 	import {
 		AiTableController,
 		EuchreController,
@@ -78,6 +79,48 @@
 	});
 
 	const won = $derived(controller?.won ?? false);
+
+	// Local stats. Mark the game as last-played when opened, and record one
+	// result per concluded deal/game (guard flags reset when a new game starts).
+	$effect(() => {
+		if (gameId !== undefined) stats.touch(gameId);
+	});
+	let solRecorded = false;
+	$effect(() => {
+		if (!controller || gameId === undefined) return;
+		if (controller.won) {
+			if (!solRecorded) {
+				stats.record(gameId, true);
+				solRecorded = true;
+			}
+		} else if (controller.stuck) {
+			if (!solRecorded) {
+				stats.record(gameId, false);
+				solRecorded = true;
+			}
+		} else solRecorded = false;
+	});
+	let euchreRecorded = false;
+	$effect(() => {
+		if (!euchre || gameId === undefined) return;
+		if (euchre.state.phase === 'gameOver') {
+			if (!euchreRecorded) {
+				stats.record(gameId, euchre.state.winner === 0);
+				euchreRecorded = true;
+			}
+		} else euchreRecorded = false;
+	});
+	let aiRecorded = false;
+	$effect(() => {
+		if (!aiGame || gameId === undefined) return;
+		const v = aiGame.view;
+		if (v.phase === 'gameOver') {
+			if (!aiRecorded) {
+				stats.record(gameId, v.winnerLabel?.startsWith('You') ?? false);
+				aiRecorded = true;
+			}
+		} else aiRecorded = false;
+	});
 
 	// On win: fanfare once, and record the daily streak if this is the untouched
 	// daily deal (controller seed still equals the daily seed — a "new deal" breaks it).

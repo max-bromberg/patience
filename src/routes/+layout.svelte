@@ -1,13 +1,36 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import './layout.css';
 	import '$lib/theme/theme.css';
 	import '$lib/theme/faces.css';
 	import VibeLayer from '$lib/render/VibeLayer.svelte';
+	import { ambience } from '$lib/render/music';
 	import { shade } from '$lib/theme/color';
 	import { settings } from '$lib/storage/settings.svelte';
 
 	let { children } = $props();
+
+	// Background music: keep volume in sync and stop when turned off. Starting is
+	// gated on a user gesture (browser autoplay policy) — the settings toggle
+	// starts it within its own click; this kicks it on the first interaction when
+	// it was left on from a previous visit.
+	$effect(() => {
+		if (!browser) return;
+		ambience.setVolume(settings.musicVolume);
+		if (!settings.music) ambience.stop();
+	});
+	onMount(() => {
+		const kick = () => {
+			if (settings.music) ambience.start();
+		};
+		window.addEventListener('pointerdown', kick, { once: true });
+		window.addEventListener('keydown', kick, { once: true });
+		return () => {
+			window.removeEventListener('pointerdown', kick);
+			window.removeEventListener('keydown', kick);
+		};
+	});
 
 	const CUSTOM_VARS = ['--felt-1', '--felt-2', '--felt-3', '--back-1', '--back-2', '--drop-ring'];
 

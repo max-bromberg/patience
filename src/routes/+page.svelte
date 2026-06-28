@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { dailyFor, type DailyInfo } from '$lib/daily';
 	import type { GameMeta } from '$lib/engine';
@@ -8,13 +9,36 @@
 	import { pickQuote, type Quote } from '$lib/quotes';
 	import CardView from '$lib/render/CardView.svelte';
 	import GameIcon from '$lib/render/GameIcon.svelte';
+	import StatsSheet from '$lib/render/StatsSheet.svelte';
+	import { ambience } from '$lib/render/music';
 	import { FACES } from '$lib/theme/faces';
 	import { THEMES } from '$lib/theme/themes';
 	import { VIBES } from '$lib/theme/vibes';
 	import { daily } from '$lib/storage/daily.svelte';
 	import { settings } from '$lib/storage/settings.svelte';
+	import { stats } from '$lib/storage/stats.svelte';
 
 	const sampleCard = makeCard('hearts', 1, { faceUp: true });
+
+	let showStats = $state(false);
+
+	// Jump straight into a random game from the whole catalog.
+	function randomGame() {
+		const pick = catalog[Math.floor(Math.random() * catalog.length)];
+		goto(resolve(`/play/${pick.id}`));
+	}
+
+	// "Continue" the most recently opened game, if any (catalog covers every kind).
+	const lastGame = $derived(
+		stats.lastPlayed ? catalog.find((m) => m.id === stats.lastPlayed) : undefined
+	);
+
+	// Toggle music from a user gesture so the AudioContext is allowed to start.
+	function toggleMusic() {
+		settings.toggleMusic();
+		if (settings.music) ambience.start();
+		else ambience.stop();
+	}
 
 	// Group the catalog by family (e.g. 'builder') for sectioned browsing.
 	// The catalog is a build-time constant, so this is computed once.
@@ -65,7 +89,19 @@
 </svelte:head>
 
 <main class="home">
-	<button class="gear" onclick={() => (showSettings = true)} aria-label="Settings">⚙</button>
+	<div class="top-actions">
+		<button class="round" onclick={() => (showStats = true)} aria-label="Stats" title="Your stats">
+			📊
+		</button>
+		<button
+			class="round"
+			onclick={() => (showSettings = true)}
+			aria-label="Settings"
+			title="Settings"
+		>
+			⚙
+		</button>
+	</div>
 	<div class="shell">
 		<header class="hero">
 			<div class="logo" aria-hidden="true">
@@ -100,6 +136,13 @@
 				</div>
 			</a>
 		{/if}
+
+		<div class="quick">
+			<button class="qbtn" onclick={randomGame}>🎲 Random game</button>
+			{#if lastGame}
+				<a class="qbtn" href={resolve(`/play/${lastGame.id}`)}>↩ Continue {lastGame.name}</a>
+			{/if}
+		</div>
 
 		{#each groups as [family, metas] (family)}
 			<section class="family">
@@ -244,6 +287,38 @@
 							<span class="knob"></span>
 						</button>
 					</section>
+
+					<section>
+						<div class="row">
+							<h3>Background music</h3>
+							<button
+								class="toggle"
+								class:on={settings.music}
+								onclick={toggleMusic}
+								role="switch"
+								aria-checked={settings.music}
+								aria-label="Background music"
+							>
+								<span class="knob"></span>
+							</button>
+						</div>
+						{#if settings.music}
+							<label class="volume">
+								<span>Volume</span>
+								<input
+									type="range"
+									min="0"
+									max="1"
+									step="0.05"
+									value={settings.musicVolume}
+									oninput={(e) => {
+										settings.musicVolume = Number(e.currentTarget.value);
+										ambience.setVolume(settings.musicVolume);
+									}}
+								/>
+							</label>
+						{/if}
+					</section>
 				</div>
 
 				<div class="sheet-actions">
@@ -251,6 +326,10 @@
 				</div>
 			</div>
 		</div>
+	{/if}
+
+	{#if showStats}
+		<StatsSheet onClose={() => (showStats = false)} />
 	{/if}
 </main>
 
@@ -504,23 +583,67 @@
 		font-style: italic;
 	}
 
-	.gear {
+	.top-actions {
 		position: fixed;
 		top: calc(0.75rem + env(safe-area-inset-top));
 		right: 0.9rem;
 		z-index: 5;
+		display: flex;
+		gap: 0.4rem;
+	}
+	.round {
 		width: 2.4rem;
 		height: 2.4rem;
 		border-radius: 999px;
 		border: none;
 		background: var(--ui-surface);
 		color: var(--ui-text);
-		font-size: 1.1rem;
+		font-size: 1.05rem;
 		cursor: pointer;
 		line-height: 1;
+		display: grid;
+		place-items: center;
 	}
-	.gear:hover {
+	.round:hover {
 		background: var(--ui-surface-hover);
+	}
+
+	.quick {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.5rem;
+		margin-bottom: 0.5rem;
+	}
+	.qbtn {
+		font-family: inherit;
+		font-size: 0.88rem;
+		font-weight: 700;
+		color: var(--ui-text);
+		background: var(--ui-surface);
+		border: 1px solid var(--tile-border);
+		border-radius: 999px;
+		padding: 0.5rem 1rem;
+		cursor: pointer;
+		text-decoration: none;
+		transition: background 0.15s var(--ease-out);
+	}
+	.qbtn:hover {
+		background: var(--ui-surface-hover);
+	}
+
+	.volume {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		margin-top: 0.7rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: #6a6a72;
+	}
+	.volume input[type='range'] {
+		flex: 1;
+		accent-color: var(--felt-1);
 	}
 
 	.overlay {
