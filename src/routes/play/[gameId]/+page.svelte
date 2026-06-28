@@ -3,6 +3,8 @@
 	import { resolve } from '$app/paths';
 	import { getGame } from '$lib/games/registry';
 	import { GameController, Table } from '$lib/render';
+	import { sfx } from '$lib/render/sound';
+	import { settings } from '$lib/storage/settings.svelte';
 
 	const gameId = $derived(page.params.gameId);
 	const game = $derived(getGame(gameId ?? ''));
@@ -16,6 +18,17 @@
 	let controller = $derived.by(() => (game ? new GameController(game, freshSeed()) : null));
 
 	const won = $derived(controller?.won ?? false);
+
+	// Play the victory fanfare once when a game is won.
+	let celebrated = false;
+	$effect(() => {
+		if (won && !celebrated) {
+			celebrated = true;
+			sfx.win();
+		} else if (!won) {
+			celebrated = false;
+		}
+	});
 </script>
 
 <svelte:head>
@@ -27,6 +40,14 @@
 		<a class="btn ghost" href={resolve('/')} aria-label="Back to catalog">‹ Catalog</a>
 		<span class="title">{game?.definition.meta.name ?? 'Game'}</span>
 		<div class="actions">
+			<button
+				class="btn icon"
+				onclick={() => settings.toggleSound()}
+				aria-label={settings.sound ? 'Mute sound' : 'Unmute sound'}
+				aria-pressed={settings.sound}
+			>
+				{settings.sound ? '🔊' : '🔇'}
+			</button>
 			{#if controller}
 				<button class="btn" onclick={() => controller.undo()} disabled={!controller.canUndo}>
 					Undo
@@ -109,6 +130,11 @@
 	}
 	.btn.ghost {
 		background: transparent;
+	}
+	.btn.icon {
+		padding: 0.4rem 0.55rem;
+		font-size: 0.95rem;
+		line-height: 1;
 	}
 	.btn.primary {
 		background: var(--back-1);

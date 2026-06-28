@@ -8,6 +8,7 @@
  */
 
 import { GameSession, type Card, type Game, type PileView, type TableLayout } from '$lib/engine';
+import { sfx } from './sound';
 
 /**
  * The read/interact surface the render shell needs. {@link GameController}
@@ -94,6 +95,7 @@ export class GameController<S, M> {
 		if (move === null) return false;
 		this.session.apply(move);
 		this.sync();
+		sfx.place();
 		return true;
 	}
 
@@ -103,6 +105,7 @@ export class GameController<S, M> {
 		if (move === null) return false;
 		this.session.apply(move);
 		this.sync();
+		sfx.draw();
 		return true;
 	}
 
@@ -112,16 +115,20 @@ export class GameController<S, M> {
 		if (move === null) return false;
 		this.session.apply(move);
 		this.sync();
+		sfx.place();
 		return true;
 	}
 
 	undo(): void {
+		if (!this.session.canUndo()) return;
 		this.session.undo();
 		this.sync();
+		sfx.flip();
 	}
 
 	newDeal(seed?: number): void {
 		this.session.newDeal(seed);
 		this.sync();
+		sfx.deal();
 	}
 }

@@ -4,6 +4,7 @@
 	import Pile from './Pile.svelte';
 	import type { TableSource } from './controller.svelte';
 	import { exceedsThreshold, pickTarget, pointerPoint, type Point, type TargetRect } from './dnd';
+	import { sfx } from './sound';
 
 	interface Props {
 		controller: TableSource;
@@ -204,7 +205,10 @@
 
 		if (d.active && d.ids.length > 0) {
 			const dropped = activeTarget && controller.drop(d.fromPileId, d.cardId, activeTarget);
-			if (!dropped) springBack(d.ids);
+			if (!dropped) {
+				springBack(d.ids);
+				sfx.invalid();
+			}
 		} else {
 			// a tap: stock draw / flip, or double-tap auto-to-foundation
 			const now = e.timeStamp;
