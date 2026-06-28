@@ -73,6 +73,25 @@
 			celebrated = false;
 		}
 	});
+
+	// Auto-finish cascade: step one foundation move at a time for a visible flourish.
+	let autoTimer = $state<ReturnType<typeof setInterval> | null>(null);
+	function stopAuto() {
+		if (autoTimer) clearInterval(autoTimer);
+		autoTimer = null;
+	}
+	function autoFinish() {
+		if (autoTimer || !controller) return;
+		autoTimer = setInterval(() => {
+			if (!controller || !controller.autoStep()) stopAuto();
+		}, 110);
+	}
+	// Stop the cascade when the deal/game changes.
+	$effect(() => {
+		void gameId;
+		void controller?.seed;
+		return stopAuto;
+	});
 </script>
 
 <svelte:head>
@@ -101,6 +120,11 @@
 				{settings.sound ? '🔊' : '🔇'}
 			</button>
 			{#if controller}
+				{#if controller.canAutoFinish && !won}
+					<button class="btn accent" onclick={autoFinish} disabled={autoTimer !== null}>
+						Auto-finish
+					</button>
+				{/if}
 				<button class="btn" onclick={() => controller.undo()} disabled={!controller.canUndo}>
 					Undo
 				</button>
@@ -131,6 +155,15 @@
 						Play again
 					</button>
 				</div>
+			</div>
+		{:else if controller.stuck}
+			<div class="stuck" role="status">
+				<span>No moves left.</span>
+				<button class="btn" onclick={() => controller.undo()} disabled={!controller.canUndo}>
+					Undo
+				</button>
+				<button class="btn primary" onclick={() => controller.newDeal(freshSeed())}>New deal</button
+				>
 			</div>
 		{/if}
 	{/if}
@@ -244,6 +277,29 @@
 	.btn.primary {
 		background: var(--back-1);
 		font-weight: 700;
+	}
+	.btn.accent {
+		background: var(--drop-ring);
+		color: #2b2208;
+		font-weight: 700;
+	}
+
+	.stuck {
+		position: fixed;
+		left: 50%;
+		bottom: calc(1rem + env(safe-area-inset-bottom));
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.6rem 0.9rem;
+		border-radius: 999px;
+		background: rgba(0, 0, 0, 0.72);
+		color: var(--ui-text);
+		box-shadow: var(--card-shadow-lift);
+		z-index: 4000;
+		animation: fade 0.3s var(--ease-out);
+		font-size: 0.9rem;
 	}
 
 	.play {

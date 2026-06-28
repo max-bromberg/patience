@@ -15,6 +15,7 @@ import {
 	type SessionSnapshot,
 	type TableLayout
 } from '$lib/engine';
+import { autoFinishWins } from './autofinish';
 import { sfx } from './sound';
 
 /**
@@ -81,9 +82,18 @@ export class GameController<S, M> {
 		return this.session.def.isWon(this.current);
 	}
 
-	get lost(): boolean {
-		void this.current;
-		return this.session.isLost();
+	/** No legal moves remain and the game isn't won — a universal dead-end check. */
+	get stuck(): boolean {
+		return !this.won && this.session.def.legalMoves(this.current).length === 0;
+	}
+
+	/**
+	 * True only when repeatedly sending top cards to foundations would actually
+	 * win — a cheap pure dry-run (auto-moves are monotonic, so it terminates).
+	 * This keeps the "Auto-finish" affordance to the trivially-solved endgame.
+	 */
+	get canAutoFinish(): boolean {
+		return autoFinishWins(this.session.def, this.presenter, this.current);
 	}
 
 	get seed(): number {
@@ -141,6 +151,18 @@ export class GameController<S, M> {
 		this.sync();
 		sfx.place();
 		return true;
+	}
+
+	/**
+	 * Apply one auto-to-foundation move if any top card can make one. Drives the
+	 * auto-finish cascade (stepped by the player for a visible animation).
+	 */
+	autoStep(): boolean {
+		for (const pile of this.presenter.piles(this.current)) {
+			const top = pile.cards[pile.cards.length - 1];
+			if (top && this.auto(top)) return true;
+		}
+		return false;
 	}
 
 	undo(): void {

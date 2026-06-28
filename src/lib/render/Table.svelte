@@ -29,6 +29,8 @@
 
 	const layout = $derived(controller.layout);
 	const piles = $derived(controller.piles);
+	// index slots by pile id once per layout (avoids an O(slots) find per card)
+	const slotById = $derived(Object.fromEntries(layout.slots.map((s) => [s.pileId, s])));
 
 	const metrics = $derived.by(() => {
 		const cols = Math.max(1, layout.columns);
@@ -44,7 +46,7 @@
 	});
 
 	function slotOrigin(pileId: string): Point | null {
-		const slot = layout.slots.find((s) => s.pileId === pileId);
+		const slot = slotById[pileId];
 		if (!slot) return null;
 		return { x: metrics.offsetX + slot.x * metrics.stepX, y: slot.y * metrics.stepY };
 	}
