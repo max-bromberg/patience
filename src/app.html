@@ -5,6 +5,53 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="/favicon.svg" />
+		<link rel="canonical" href="https://patience.maxbromberg.me/" />
+
+		<!-- SEO / social defaults (per-page <svelte:head> overrides title + description) -->
+		<meta
+			name="description"
+			content="Patience — a cozy, free collection of single-player solitaire and trick-taking card games you can play in your browser, with AI opponents. No ads, no sign-up."
+		/>
+		<meta name="theme-color" content="#1f5e40" />
+		<meta name="author" content="Max Bromberg" />
+		<meta
+			name="keywords"
+			content="solitaire, card games, klondike, freecell, spider, euchre, hearts, free online card games, AI card games"
+		/>
+
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="Patience" />
+		<meta property="og:title" content="Patience · cozy card games" />
+		<meta
+			property="og:description"
+			content="A cozy, free collection of solitaire and trick-taking card games with AI opponents — playable right in your browser."
+		/>
+		<meta property="og:url" content="https://patience.maxbromberg.me/" />
+		<meta property="og:image" content="https://patience.maxbromberg.me/favicon.svg" />
+
+		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:title" content="Patience · cozy card games" />
+		<meta
+			name="twitter:description"
+			content="A cozy, free collection of solitaire and trick-taking card games with AI opponents."
+		/>
+		<meta name="twitter:image" content="https://patience.maxbromberg.me/favicon.svg" />
+
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "WebApplication",
+				"name": "Patience",
+				"url": "https://patience.maxbromberg.me/",
+				"applicationCategory": "GameApplication",
+				"operatingSystem": "Any",
+				"browserRequirements": "Requires a modern web browser",
+				"description": "A cozy collection of single-player solitaire and trick-taking card games with AI opponents.",
+				"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+			}
+		</script>
+
 		<script>
 			// Apply the saved theme before first paint to avoid a flash of the default.
 			try {

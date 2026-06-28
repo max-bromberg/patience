@@ -10,13 +10,19 @@
 	--felt-1: #2f7d57;
 	--felt-2: #1f5e40;
 	--felt-3: #184a32;
-	/* Tiny tiling fractal-noise SVG gives the felt a woven grain; layered over
-	   the radial gradient with soft-light so it reads as texture, not dirt. */
-	--felt-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+	/* Felt is built from three cheap, tiling layers over the base gradient:
+	   a fine fractal-noise GRAIN (soft-light), a faint diagonal WEAVE crosshatch
+	   (overlay), and a soft vignette for depth — so it reads as woven cloth, not
+	   dirt. Each is an inline SVG data-URL, no assets. */
+	--felt-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.3'/%3E%3C/svg%3E");
+	--felt-weave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Cpath d='M0 0L6 6M6 0L0 6' stroke='%23ffffff' stroke-opacity='0.022' stroke-width='1'/%3E%3C/svg%3E");
+	/* kept as an alias for any external references */
+	--felt-texture: var(--felt-grain);
 	--table-bg:
-		var(--felt-texture) repeat,
-		radial-gradient(120% 90% at 50% 0%, var(--felt-1), var(--felt-2) 55%, var(--felt-3));
-	--table-blend: soft-light, normal;
+		var(--felt-grain) repeat, var(--felt-weave) repeat,
+		radial-gradient(120% 82% at 50% 116%, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0) 58%),
+		radial-gradient(145% 115% at 50% -12%, var(--felt-1), var(--felt-2) 50%, var(--felt-3));
+	--table-blend: soft-light, overlay, normal, normal;
 
 	/* Cards */
 	--card-bg: #fffdf8;
@@ -169,7 +175,7 @@
 	--tile-bg: rgba(255, 255, 255, 0.5);
 	--tile-bg-hover: rgba(255, 255, 255, 0.72);
 	--tile-border: rgba(58, 77, 102, 0.14);
-	--table-blend: overlay, normal;
+	--table-blend: overlay, overlay, normal, normal;
 }
 
 :root[data-theme='buttercream'] {
@@ -190,7 +196,7 @@
 	--tile-bg: rgba(255, 255, 255, 0.5);
 	--tile-bg-hover: rgba(255, 255, 255, 0.74);
 	--tile-border: rgba(90, 70, 50, 0.14);
-	--table-blend: overlay, normal;
+	--table-blend: overlay, overlay, normal, normal;
 }
 
 /* Custom theme: felt/back/accent vars are set inline on <html> from the picks. */

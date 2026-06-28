@@ -105,7 +105,12 @@
 </script>
 
 <svelte:head>
-	<title>{meta ? meta.name : 'Play'} · Patience</title>
+	<title>{meta ? `${meta.name} · Patience` : 'Play · Patience'}</title>
+	{#if meta}
+		<meta name="description" content="Play {meta.name} free in your browser — {meta.blurb}" />
+		<meta property="og:title" content="{meta.name} · Patience" />
+		<meta property="og:description" content={meta.blurb} />
+	{/if}
 </svelte:head>
 
 <div class="screen">
