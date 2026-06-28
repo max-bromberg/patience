@@ -166,6 +166,14 @@
 									oninput={(e) => settings.setCustom({ back: e.currentTarget.value })}
 								/>
 							</label>
+							<label>
+								<span>Accent</span>
+								<input
+									type="color"
+									value={settings.custom.accent}
+									oninput={(e) => settings.setCustom({ accent: e.currentTarget.value })}
+								/>
+							</label>
 						</div>
 					{/if}
 				</section>

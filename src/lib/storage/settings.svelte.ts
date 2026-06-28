@@ -12,6 +12,7 @@ import { readJSON, writeJSON } from './storage';
 export interface CustomColors {
 	felt: string;
 	back: string;
+	accent: string;
 }
 
 interface SettingsData {
@@ -22,7 +23,7 @@ interface SettingsData {
 }
 
 const KEY = 'settings';
-const DEFAULT_CUSTOM: CustomColors = { felt: '#3a6ea5', back: '#b9472f' };
+const DEFAULT_CUSTOM: CustomColors = { felt: '#3a6ea5', back: '#b9472f', accent: '#ffe39a' };
 
 function defaultVibes(): Record<string, boolean> {
 	return Object.fromEntries(VIBE_IDS.map((id) => [id, false]));
@@ -48,7 +49,11 @@ class Settings {
 				felt:
 					saved.custom && isHexColor(saved.custom.felt) ? saved.custom.felt : DEFAULT_CUSTOM.felt,
 				back:
-					saved.custom && isHexColor(saved.custom.back) ? saved.custom.back : DEFAULT_CUSTOM.back
+					saved.custom && isHexColor(saved.custom.back) ? saved.custom.back : DEFAULT_CUSTOM.back,
+				accent:
+					saved.custom && isHexColor(saved.custom.accent)
+						? saved.custom.accent
+						: DEFAULT_CUSTOM.accent
 			},
 			vibes: { ...defaultVibes(), ...(saved.vibes ?? {}) }
 		};

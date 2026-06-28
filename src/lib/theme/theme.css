@@ -93,9 +93,41 @@
 	--back-2: #214f63;
 }
 
-/* Custom theme: felt/back vars are set inline on <html> from the user's picks. */
+:root[data-theme='sunset'] {
+	--felt-1: #b5532e;
+	--felt-2: #8a3a23;
+	--felt-3: #5f2519;
+	--back-1: #2f6f8a;
+	--back-2: #214f63;
+	--drop-ring: #ffe1a1;
+}
+
+:root[data-theme='rose'] {
+	--felt-1: #b14a6e;
+	--felt-2: #8c3556;
+	--felt-3: #5f2139;
+	--back-1: #3f7d6a;
+	--back-2: #2c5b4d;
+}
+
+:root[data-theme='slate'] {
+	--felt-1: #4a5b73;
+	--felt-2: #34425a;
+	--felt-3: #232d3f;
+	--back-1: #c06b3a;
+	--back-2: #934f27;
+}
+
+/* Custom theme: felt/back/accent vars are set inline on <html> from the picks. */
 :root[data-theme='custom'] {
 	/* intentionally empty — inline custom properties drive this theme */
+}
+
+/* Dark page backdrop so the browser's overscroll / safe-area gutters (notably
+   Safari) match the felt instead of flashing white. Tracks the active theme. */
+html {
+	background: var(--felt-3, #14241c);
+	color-scheme: dark;
 }
 
 @media (prefers-reduced-motion: reduce) {

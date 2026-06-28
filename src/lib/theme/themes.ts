@@ -11,7 +11,10 @@ export const THEMES: readonly ThemeOption[] = [
 	{ id: 'twilight', name: 'Twilight', swatch: '#6a4aa0' },
 	{ id: 'midnight', name: 'Midnight', swatch: '#2c3340' },
 	{ id: 'ocean', name: 'Ocean', swatch: '#1f7a8c' },
-	{ id: 'crimson', name: 'Crimson', swatch: '#9c3b46' }
+	{ id: 'crimson', name: 'Crimson', swatch: '#9c3b46' },
+	{ id: 'sunset', name: 'Sunset', swatch: '#b5532e' },
+	{ id: 'rose', name: 'Rose', swatch: '#b14a6e' },
+	{ id: 'slate', name: 'Slate', swatch: '#4a5b73' }
 ];
 
 export const DEFAULT_THEME = 'felt';

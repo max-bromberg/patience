@@ -48,34 +48,36 @@
 		inset: 0;
 	}
 
-	/* Hearth — warm flickering glow rising from the bottom */
+	/* Hearth — warm glow rising from the bottom. Flicker varies brightness only
+	   (no transform), so the soft gradient edge never reveals a hard cut. */
 	.hearth {
 		background: radial-gradient(
-			70% 45% at 50% 108%,
+			95% 65% at 50% 118%,
 			rgba(255, 150, 60, 0.5),
-			rgba(255, 120, 40, 0.18) 40%,
-			transparent 70%
+			rgba(255, 120, 40, 0.16) 45%,
+			transparent 78%
 		);
 		mix-blend-mode: screen;
-		animation: flicker 3.2s ease-in-out infinite;
+		animation: flicker 3.4s ease-in-out infinite;
+		will-change: opacity, filter;
 	}
 	@keyframes flicker {
 		0%,
 		100% {
-			opacity: 0.85;
-			transform: scaleY(1);
+			opacity: 0.86;
+			filter: brightness(1);
 		}
 		25% {
 			opacity: 1;
-			transform: scaleY(1.04);
+			filter: brightness(1.12);
 		}
 		50% {
-			opacity: 0.78;
-			transform: scaleY(0.98);
+			opacity: 0.8;
+			filter: brightness(0.96);
 		}
 		75% {
-			opacity: 0.95;
-			transform: scaleY(1.02);
+			opacity: 0.94;
+			filter: brightness(1.05);
 		}
 	}
 
