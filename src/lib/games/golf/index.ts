@@ -16,6 +16,7 @@ import {
 	type PileView,
 	type TableLayout
 } from '$lib/engine';
+import { parsePileIndex as parseIndex, tableauId, topCard as top } from '../shared';
 
 export interface GolfState {
 	readonly stock: readonly Card[];
@@ -30,12 +31,6 @@ const COL_SIZE = 5;
 
 const stockId = 'stock';
 const wasteId = 'waste';
-const tableauId = (i: number) => `tableau-${i}`;
-const parseIndex = (id: string) => Number(id.slice(id.lastIndexOf('-') + 1));
-
-function top(pile: readonly Card[]): Card | undefined {
-	return pile[pile.length - 1];
-}
 
 /** One rank apart, no wrap. */
 function playable(card: Card, wasteTop: Card | undefined): boolean {

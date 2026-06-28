@@ -16,6 +16,7 @@ import {
 	type PileView,
 	type TableLayout
 } from '$lib/engine';
+import { parsePileIndex as parseIndex, topCard as top } from '../shared';
 
 export interface TriPeaksState {
 	/** 28 board slots by position index; null once cleared. */
@@ -75,11 +76,6 @@ const ROW_STEP = 0.52;
 const stockId = 'stock';
 const wasteId = 'waste';
 const peakId = (i: number) => `peak-${i}`;
-const parseIndex = (id: string) => Number(id.slice(id.lastIndexOf('-') + 1));
-
-function top(pile: readonly Card[]): Card | undefined {
-	return pile[pile.length - 1];
-}
 
 function isExposed(peaks: readonly (Card | null)[], index: number): boolean {
 	return COVERERS[index].every((i) => peaks[i] === null);

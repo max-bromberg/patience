@@ -20,6 +20,15 @@ import {
 	type PileView,
 	type TableLayout
 } from '$lib/engine';
+import {
+	canStackOnFoundation as canPlaceOnFoundation,
+	emptyFoundations,
+	foundationId,
+	freeCellId as cellId,
+	parsePileIndex as parseIndex,
+	tableauId,
+	topCard as top
+} from '../shared';
 
 export interface FreeCellState {
 	readonly freeCells: readonly (Card | null)[]; // 4
@@ -38,27 +47,12 @@ const COLS = 8;
 const CELLS = 4;
 const FOUNDATIONS = 4;
 
-const cellId = (i: number) => `free-${i}`;
-const foundationId = (i: number) => `foundation-${i}`;
-const tableauId = (i: number) => `tableau-${i}`;
-const parseIndex = (id: string) => Number(id.slice(id.lastIndexOf('-') + 1));
-
-function top(pile: readonly Card[]): Card | undefined {
-	return pile[pile.length - 1];
-}
-
 /** FreeCell tableau rule: any card lands on an empty column; else alt-color descending. */
 function canPlaceOnTableau(bottom: Card | undefined, col: readonly Card[]): boolean {
 	if (!bottom) return false;
 	const t = top(col);
 	if (!t) return true; // any card to an empty column
 	return isOppositeColor(bottom, t) && bottom.rank === t.rank - 1;
-}
-
-function canPlaceOnFoundation(card: Card, foundation: readonly Card[]): boolean {
-	const t = top(foundation);
-	if (!t) return card.rank === 1;
-	return t.suit === card.suit && card.rank === t.rank + 1;
 }
 
 /** Max sequence length movable as a supermove. */
@@ -109,7 +103,7 @@ export function makeFreeCell(): Game<FreeCellState, FreeCellMove> {
 			deck.forEach((card, i) => tableau[i % COLS].push(card));
 			return {
 				freeCells: Array.from({ length: CELLS }, () => null),
-				foundations: Array.from({ length: FOUNDATIONS }, () => []),
+				foundations: emptyFoundations(FOUNDATIONS),
 				tableau
 			};
 		},

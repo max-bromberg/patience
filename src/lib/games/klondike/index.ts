@@ -19,6 +19,14 @@ import {
 	type PileView,
 	type TableLayout
 } from '$lib/engine';
+import {
+	canStackOnFoundation as canPlaceOnFoundation,
+	flipExposedTop as flipExposed,
+	foundationId,
+	parsePileIndex as parseIndex,
+	tableauId,
+	topCard
+} from '../shared';
 
 export interface KlondikeState {
 	readonly stock: readonly Card[]; // face-down
@@ -40,17 +48,8 @@ export type KlondikeMove =
 const COLS = 7;
 const FOUNDATIONS = 4;
 
-// --- pile id helpers --------------------------------------------------------
 const STOCK = 'stock';
 const WASTE = 'waste';
-const foundationId = (i: number) => `foundation-${i}`;
-const tableauId = (i: number) => `tableau-${i}`;
-const parseIndex = (id: string) => Number(id.slice(id.lastIndexOf('-') + 1));
-
-// --- rule helpers -----------------------------------------------------------
-function topCard(pile: readonly Card[]): Card | undefined {
-	return pile[pile.length - 1];
-}
 
 /** A run can land on a tableau column. */
 function canPlaceOnTableau(run: readonly Card[], col: readonly Card[]): boolean {
@@ -59,13 +58,6 @@ function canPlaceOnTableau(run: readonly Card[], col: readonly Card[]): boolean 
 	const t = topCard(col);
 	if (!t) return bottom.rank === 13; // only Kings to an empty column
 	return isOppositeColor(bottom, t) && bottom.rank === t.rank - 1;
-}
-
-/** A single card can land on a foundation. */
-function canPlaceOnFoundation(card: Card, foundation: readonly Card[]): boolean {
-	const t = topCard(foundation);
-	if (!t) return card.rank === 1; // Ace starts a foundation
-	return t.suit === card.suit && card.rank === t.rank + 1;
 }
 
 /** The movable run grabbing `cardId` in a pile, or null if not grabbable. */
@@ -87,14 +79,6 @@ function grabRun(state: KlondikeState, pileId: string, cardId: string): readonly
 		return isDescendingAltColor(run) ? run : null;
 	}
 	return null;
-}
-
-// --- immutable state helpers ------------------------------------------------
-/** Auto-flip the exposed top of a tableau column face-up. */
-function flipExposed(col: readonly Card[]): readonly Card[] {
-	const t = topCard(col);
-	if (t && !t.faceUp) return [...col.slice(0, -1), setFaceUp(t, true)];
-	return col;
 }
 
 function withTableau(

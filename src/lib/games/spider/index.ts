@@ -20,6 +20,13 @@ import {
 	type Suit,
 	type TableLayout
 } from '$lib/engine';
+import {
+	flipExposedTop,
+	foundationId,
+	parsePileIndex as parseIndex,
+	tableauId,
+	topCard as top
+} from '../shared';
 
 export interface SpiderState {
 	readonly stock: readonly Card[]; // face-down; dealt 10 at a time
@@ -35,13 +42,6 @@ const RANKS: Rank[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 const ALL_SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
 
 const stockId = 'stock';
-const foundationId = (i: number) => `foundation-${i}`;
-const tableauId = (i: number) => `tableau-${i}`;
-const parseIndex = (id: string) => Number(id.slice(id.lastIndexOf('-') + 1));
-
-function top(pile: readonly Card[]): Card | undefined {
-	return pile[pile.length - 1];
-}
 
 /** Build a 104-card Spider deck using `suitCount` distinct suits, then shuffle. */
 function spiderDeck(seed: number, suitCount: 1 | 2 | 4): Card[] {
@@ -73,12 +73,6 @@ function grabRun(state: SpiderState, pileId: string, cardId: string): readonly C
 	return isDescendingSameSuit(run) ? run : null;
 }
 
-function flipExposed(col: readonly Card[]): readonly Card[] {
-	const t = top(col);
-	if (t && !t.faceUp) return [...col.slice(0, -1), setFaceUp(t, true)];
-	return col;
-}
-
 /**
  * Lift any completed King→Ace same-suit run off a column's top into a
  * foundation. Returns the settled tableau + foundations (loops in case a lift
@@ -101,7 +95,7 @@ function collectRuns(
 			const isKtoA = tail.every((c, k) => c.rank === 13 - k);
 			if (sameSuit && isKtoA) {
 				found.push(tail);
-				cols[i] = flipExposed(col.slice(0, col.length - 13)).slice();
+				cols[i] = flipExposedTop(col.slice(0, col.length - 13)).slice();
 				changed = true;
 			}
 		}
@@ -184,7 +178,7 @@ export function makeSpider(suitCount: 1 | 2 | 4): Game<SpiderState, SpiderMove> 
 			const from = state.tableau[move.from];
 			const moved = from.slice(from.length - move.count);
 			const tableau = state.tableau.map((col, i) => {
-				if (i === move.from) return flipExposed(col.slice(0, col.length - move.count)).slice();
+				if (i === move.from) return flipExposedTop(col.slice(0, col.length - move.count)).slice();
 				if (i === move.to) return [...col, ...moved];
 				return col.slice();
 			});

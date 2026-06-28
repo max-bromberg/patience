@@ -8,8 +8,8 @@
 
 import {
 	isOppositeColor,
-	setFaceUp,
 	shuffledDeck,
+	setFaceUp,
 	type Card,
 	type Game,
 	type GameDefinition,
@@ -17,6 +17,14 @@ import {
 	type PileView,
 	type TableLayout
 } from '$lib/engine';
+import {
+	canStackOnFoundation as canPlaceOnFoundation,
+	flipExposedTop,
+	foundationId,
+	parsePileIndex as parseIndex,
+	tableauId,
+	topCard as top
+} from '../shared';
 
 export interface YukonState {
 	readonly foundations: readonly (readonly Card[])[]; // 4
@@ -33,26 +41,12 @@ const FOUNDATIONS = 4;
 /** Face-down cards beneath the 5 face-up in each column (column 0 is special). */
 const FACE_DOWN = [0, 1, 2, 3, 4, 5, 6];
 
-const foundationId = (i: number) => `foundation-${i}`;
-const tableauId = (i: number) => `tableau-${i}`;
-const parseIndex = (id: string) => Number(id.slice(id.lastIndexOf('-') + 1));
-
-function top(pile: readonly Card[]): Card | undefined {
-	return pile[pile.length - 1];
-}
-
 /** A grabbed group lands on a column if its bottom card fits (alt-color down, King to empty). */
 function canPlaceOnTableau(bottom: Card | undefined, col: readonly Card[]): boolean {
 	if (!bottom) return false;
 	const t = top(col);
 	if (!t) return bottom.rank === 13;
 	return isOppositeColor(bottom, t) && bottom.rank === t.rank - 1;
-}
-
-function canPlaceOnFoundation(card: Card, foundation: readonly Card[]): boolean {
-	const t = top(foundation);
-	if (!t) return card.rank === 1;
-	return t.suit === card.suit && card.rank === t.rank + 1;
 }
 
 /** In Yukon any face-up card is grabbable along with everything on top of it. */
@@ -64,16 +58,10 @@ function grabRun(state: YukonState, pileId: string, cardId: string): readonly Ca
 	return col.slice(idx);
 }
 
-function flipExposed(col: readonly Card[]): readonly Card[] {
-	const t = top(col);
-	if (t && !t.faceUp) return [...col.slice(0, -1), setFaceUp(t, true)];
-	return col;
-}
-
 function withTableau(state: YukonState, changes: Record<number, readonly Card[]>): YukonState {
 	return {
 		...state,
-		tableau: state.tableau.map((col, i) => (i in changes ? flipExposed(changes[i]) : col))
+		tableau: state.tableau.map((col, i) => (i in changes ? flipExposedTop(changes[i]) : col))
 	};
 }
 
