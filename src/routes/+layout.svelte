@@ -2,7 +2,6 @@
 	import { browser } from '$app/environment';
 	import './layout.css';
 	import '$lib/theme/theme.css';
-	import favicon from '$lib/assets/favicon.svg';
 	import { settings } from '$lib/storage/settings.svelte';
 
 	let { children } = $props();
@@ -14,5 +13,4 @@
 	});
 </script>
 
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
 {@render children()}
