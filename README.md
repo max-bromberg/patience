@@ -55,13 +55,23 @@ See `PROPOSAL.md` for the full plan. Phases: **0** scaffold + live deploy ·
 
 ## Games & features
 
-- **Games:** Klondike (draw-3 / draw-1), FreeCell, Yukon, Spider (1 / 2 / 4 suit).
-  Each is a pure module registered in `src/lib/games/registry.ts`.
+- **11 games** across three families, each a pure module registered in
+  `src/lib/games/registry.ts` (shared rules live in `src/lib/games/shared.ts`):
+  - _Builder:_ Klondike (draw-3 / draw-1), FreeCell, Yukon, Forty Thieves, Scorpion
+  - _Spider:_ Spider (1 / 2 / 4 suit)
+  - _Adder:_ Golf, TriPeaks
 - **Daily challenge:** a date-seeded deal everyone shares, with a local streak
   (`src/lib/daily.ts`, `src/lib/storage/daily.svelte.ts`).
 - **Shareable deals:** any game accepts `?seed=<n>` for a reproducible deal.
-- **Sound:** synthesized via Web Audio (`src/lib/render/sound.ts`), mute toggle
-  persisted in `localStorage`.
+- **Resume:** in-progress casual games persist and restore on reload
+  (`src/lib/storage/resume.ts`).
+- **Auto-finish & stuck detection:** a cascade to clear a solved board, and a
+  universal "no moves left" prompt.
+- **Theming:** preset felt themes + a custom color builder (felt / card-back /
+  accent), and toggleable ambient "vibes" (hearth, casino, aurora, vignette,
+  sparkle) — `src/lib/theme/*`, `src/lib/render/VibeLayer.svelte`.
+- **Sound:** synthesized via Web Audio (`src/lib/render/sound.ts`), mute toggle.
 - **How to play:** per-game `howTo` steps + a learn-more link in the player.
 
-Shelved theming ideas live in [`docs/themes-backlog.md`](docs/themes-backlog.md).
+All settings persist in `localStorage`. Shelved theming ideas live in
+[`docs/themes-backlog.md`](docs/themes-backlog.md).
