@@ -3,11 +3,16 @@
 	import { resolve } from '$app/paths';
 	import { dailyFor, type DailyInfo } from '$lib/daily';
 	import type { GameMeta } from '$lib/engine';
+	import { makeCard } from '$lib/engine';
 	import { catalog, getGame } from '$lib/games/registry';
+	import CardView from '$lib/render/CardView.svelte';
+	import { FACES } from '$lib/theme/faces';
 	import { THEMES } from '$lib/theme/themes';
 	import { VIBES } from '$lib/theme/vibes';
 	import { daily } from '$lib/storage/daily.svelte';
 	import { settings } from '$lib/storage/settings.svelte';
+
+	const sampleCard = makeCard('hearts', 1, { faceUp: true });
 
 	// Group the catalog by family (e.g. 'builder') for sectioned browsing.
 	// The catalog is a build-time constant, so this is computed once.
@@ -176,6 +181,26 @@
 							</label>
 						</div>
 					{/if}
+				</section>
+
+				<section>
+					<h3>Card face</h3>
+					<div class="faces">
+						{#each FACES as f (f.id)}
+							<button
+								class="face-opt"
+								class:selected={settings.face === f.id}
+								onclick={() => (settings.face = f.id)}
+								aria-label={f.name}
+								aria-pressed={settings.face === f.id}
+							>
+								<span class="face-prev" data-face={f.id}>
+									<CardView card={sampleCard} w={40} h={56} />
+								</span>
+								<span class="face-name">{f.name}</span>
+							</button>
+						{/each}
+					</div>
 				</section>
 
 				<section>
@@ -556,6 +581,35 @@
 		background: none;
 		cursor: pointer;
 		padding: 0;
+	}
+
+	.faces {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+		gap: 0.6rem;
+	}
+	.face-opt {
+		display: grid;
+		justify-items: center;
+		gap: 0.25rem;
+		padding: 0.4rem 0.2rem;
+		border-radius: 0.6rem;
+		border: 2px solid transparent;
+		background: none;
+		cursor: pointer;
+	}
+	.face-opt.selected {
+		border-color: var(--felt-1);
+		background: rgba(0, 0, 0, 0.04);
+	}
+	.face-prev {
+		display: block;
+		line-height: 0;
+	}
+	.face-name {
+		font-size: 0.68rem;
+		color: #6a6a72;
+		font-weight: 600;
 	}
 
 	.vibes-list {

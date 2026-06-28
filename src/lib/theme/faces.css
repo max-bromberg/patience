@@ -1,0 +1,182 @@
+/**
+ * Card-face styles. Each `[data-face='id']` block overrides the face CSS vars
+ * that CardView reads. Attribute selectors (not :root-scoped) so settings can
+ * apply a face globally on <html> AND the picker can preview faces on a scoped
+ * wrapper element.
+ */
+
+/* Sensible defaults for any face */
+[data-face] {
+	--card-face-bg: var(--card-bg);
+	--card-face-font: var(--font-rounded);
+	--card-corner-scale: 1;
+	--card-corner-weight: 700;
+	--card-pip-scale: 1;
+	--card-pip-halo: transparent;
+	--card-face-border: 0.012em solid var(--card-border);
+	--card-face-pattern: none;
+	--card-face-pattern-opacity: 1;
+}
+
+/* ---- Cozy ------------------------------------------------------------- */
+[data-face='cozy'] {
+	--card-face-bg: linear-gradient(160deg, #fffaf0, #fdf0df);
+	--card-ink-black: #4a4036;
+	--card-ink-red: #d2604f;
+	--card-radius: 0.16em;
+	--card-corner-scale: 1.05;
+	--card-pip-halo: rgba(210, 96, 79, 0.07);
+	--card-face-border: 0.012em solid rgba(120, 90, 60, 0.18);
+}
+
+[data-face='linen'] {
+	--card-face-bg: #f6f1e7;
+	--card-ink-black: #46433c;
+	--card-ink-red: #b9514a;
+	--card-radius: 0.12em;
+	--card-face-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+	--card-face-pattern-opacity: 0.06;
+}
+
+[data-face='marshmallow'] {
+	--card-face-bg: radial-gradient(120% 120% at 50% 0%, #ffffff, #fff2f5);
+	--card-ink-black: #5a4d57;
+	--card-ink-red: #e8779a;
+	--card-radius: 0.24em;
+	--card-pip-scale: 1.12;
+	--card-corner-scale: 1.08;
+	--card-pip-halo: rgba(232, 119, 154, 0.1);
+	--card-face-border: none;
+}
+
+[data-face='cocoa'] {
+	--card-face-bg: linear-gradient(160deg, #efe1cf, #e3cfb4);
+	--card-ink-black: #4b3a2c;
+	--card-ink-red: #b1563c;
+	--card-radius: 0.16em;
+	--card-pip-halo: rgba(75, 58, 44, 0.06);
+	--card-face-border: 0.012em solid rgba(75, 58, 44, 0.2);
+}
+
+/* ---- Cute ------------------------------------------------------------- */
+[data-face='cloud'] {
+	--card-face-bg: linear-gradient(165deg, #ffffff, #eaf4ff);
+	--card-ink-black: #5b7aa6;
+	--card-ink-red: #e98aa6;
+	--card-radius: 0.28em;
+	--card-pip-scale: 1.05;
+	--card-corner-scale: 1.05;
+	--card-pip-halo: rgba(120, 170, 230, 0.14);
+	--card-face-border: none;
+	--card-face-pattern:
+		radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.9) 18%, transparent 19%),
+		radial-gradient(circle at 70% 78%, rgba(200, 226, 255, 0.6) 14%, transparent 15%);
+	--card-face-pattern-opacity: 0.7;
+}
+
+[data-face='bun'] {
+	--card-face-bg: #fffdf6;
+	--card-ink-black: #3a3a3a;
+	--card-ink-red: #e8762f;
+	--card-radius: 0.3em;
+	--card-corner-scale: 0.95;
+	--card-pip-scale: 0.92;
+	--card-face-border: 0.03em solid #3a3a3a;
+}
+
+[data-face='sakura'] {
+	--card-face-bg: linear-gradient(160deg, #fff5f8, #ffe6ef);
+	--card-ink-black: #8a5a72;
+	--card-ink-red: #e35d86;
+	--card-radius: 0.24em;
+	--card-pip-halo: rgba(227, 93, 134, 0.12);
+	--card-face-border: none;
+	--card-face-pattern:
+		radial-gradient(circle at 25% 30%, rgba(255, 182, 206, 0.5) 6%, transparent 7%),
+		radial-gradient(circle at 75% 65%, rgba(255, 182, 206, 0.4) 5%, transparent 6%);
+	--card-face-pattern-opacity: 0.8;
+}
+
+[data-face='matcha'] {
+	--card-face-bg: linear-gradient(160deg, #f3f7e8, #e3efcf);
+	--card-ink-black: #4d6042;
+	--card-ink-red: #c66a4a;
+	--card-radius: 0.2em;
+	--card-pip-halo: rgba(77, 96, 66, 0.08);
+	--card-face-border: 0.012em solid rgba(77, 96, 66, 0.18);
+}
+
+[data-face='lavender'] {
+	--card-face-bg: linear-gradient(160deg, #f7f2ff, #ece1ff);
+	--card-ink-black: #6b5a86;
+	--card-ink-red: #c764a6;
+	--card-radius: 0.24em;
+	--card-pip-halo: rgba(150, 120, 200, 0.12);
+	--card-face-border: none;
+}
+
+[data-face='bubblegum'] {
+	--card-face-bg: linear-gradient(160deg, #fff0f6, #e6f3ff);
+	--card-ink-black: #6a6fb0;
+	--card-ink-red: #ff6f9c;
+	--card-radius: 0.3em;
+	--card-pip-scale: 1.1;
+	--card-corner-scale: 1.1;
+	--card-corner-weight: 800;
+	--card-pip-halo: rgba(255, 111, 156, 0.12);
+	--card-face-border: none;
+}
+
+/* ---- Classic ---------------------------------------------------------- */
+[data-face='classic'] {
+	--card-face-bg: #ffffff;
+	--card-ink-black: #1c1c1c;
+	--card-ink-red: #c8102e;
+	--card-radius: 0.06em;
+	--card-face-font: 'Georgia', 'Times New Roman', serif;
+	--card-face-border: 0.012em solid rgba(0, 0, 0, 0.18);
+}
+
+[data-face='paper'] {
+	--card-face-bg: #f4ecd8;
+	--card-ink-black: #36302a;
+	--card-ink-red: #a23b2e;
+	--card-radius: 0.08em;
+	--card-face-font: 'Georgia', 'Times New Roman', serif;
+	--card-face-border: 0.012em solid rgba(54, 48, 42, 0.22);
+	--card-face-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+	--card-face-pattern-opacity: 0.08;
+}
+
+/* ---- Bold / Casino ---------------------------------------------------- */
+[data-face='casino'] {
+	--card-face-bg: #ffffff;
+	--card-ink-black: #111111;
+	--card-ink-red: #e10600;
+	--card-radius: 0.08em;
+	--card-corner-scale: 1.15;
+	--card-corner-weight: 800;
+	--card-pip-scale: 1.05;
+	--card-face-border: 0.05em solid #d4af37;
+}
+
+[data-face='neon'] {
+	--card-face-bg: radial-gradient(120% 120% at 50% 0%, #1c2547, #0d1330);
+	--card-ink-black: #5ef0ff;
+	--card-ink-red: #ff5c9e;
+	--card-radius: 0.2em;
+	--card-corner-scale: 1.05;
+	--card-corner-weight: 800;
+	--card-pip-halo: rgba(94, 240, 255, 0.12);
+	--card-face-border: 0.02em solid rgba(94, 240, 255, 0.4);
+}
+
+[data-face='royal'] {
+	--card-face-bg: linear-gradient(160deg, #fbf3df, #efe0bd);
+	--card-ink-black: #2c2a4a;
+	--card-ink-red: #9c2b3a;
+	--card-radius: 0.12em;
+	--card-face-font: 'Georgia', 'Times New Roman', serif;
+	--card-corner-scale: 1.05;
+	--card-face-border: 0.04em solid #c2a14a;
+}

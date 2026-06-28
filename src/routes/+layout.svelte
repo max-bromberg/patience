@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import './layout.css';
 	import '$lib/theme/theme.css';
+	import '$lib/theme/faces.css';
 	import VibeLayer from '$lib/render/VibeLayer.svelte';
 	import { shade } from '$lib/theme/color';
 	import { settings } from '$lib/storage/settings.svelte';
@@ -18,6 +19,7 @@
 		if (!browser) return;
 		const el = document.documentElement;
 		el.dataset.theme = settings.theme;
+		el.dataset.face = settings.face;
 		if (settings.theme === 'custom') {
 			const { felt, back, accent } = settings.custom;
 			el.style.setProperty('--felt-1', felt);

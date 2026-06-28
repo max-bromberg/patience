@@ -41,7 +41,7 @@
 		width: var(--cw);
 		height: var(--ch);
 		perspective: 600px;
-		font-family: var(--font-rounded);
+		font-family: var(--card-face-font, var(--font-rounded));
 		user-select: none;
 		-webkit-user-select: none;
 		touch-action: none;
@@ -87,12 +87,23 @@
 	}
 
 	.face {
-		background: var(--card-bg);
-		border: 0.012em solid var(--card-border);
+		background: var(--card-face-bg, var(--card-bg));
+		border: var(--card-face-border, 0.012em solid var(--card-border));
 		color: var(--card-ink-black);
+		overflow: hidden;
 	}
 	.face.red {
 		color: var(--card-ink-red);
+	}
+	/* optional decorative pattern overlay per face style */
+	.face::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: var(--card-face-pattern, none);
+		background-size: var(--card-face-pattern-size, cover);
+		pointer-events: none;
+		opacity: var(--card-face-pattern-opacity, 1);
 	}
 
 	.lifted .face,
@@ -106,13 +117,14 @@
 		flex-direction: column;
 		align-items: center;
 		line-height: 0.9;
-		font-weight: 700;
+		font-weight: var(--card-corner-weight, 700);
+		z-index: 1;
 	}
 	.corner b {
-		font-size: 0.2em;
+		font-size: calc(0.2em * var(--card-corner-scale, 1));
 	}
 	.corner i {
-		font-size: 0.18em;
+		font-size: calc(0.18em * var(--card-corner-scale, 1));
 		font-style: normal;
 	}
 	.tl {
@@ -130,8 +142,18 @@
 		inset: 0;
 		display: grid;
 		place-items: center;
-		font-size: 0.46em;
+		font-size: calc(0.46em * var(--card-pip-scale, 1));
 		opacity: 0.92;
+		z-index: 1;
+	}
+	/* soft halo behind the central pip for cozy/cute faces */
+	.center::before {
+		content: '';
+		position: absolute;
+		width: 1.5em;
+		height: 1.5em;
+		border-radius: 50%;
+		background: var(--card-pip-halo, transparent);
 	}
 
 	.back {

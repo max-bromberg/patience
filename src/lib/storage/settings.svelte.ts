@@ -5,6 +5,7 @@
  */
 
 import { isHexColor } from '$lib/theme/color';
+import { DEFAULT_FACE, isFace } from '$lib/theme/faces';
 import { DEFAULT_THEME, isTheme } from '$lib/theme/themes';
 import { VIBE_IDS } from '$lib/theme/vibes';
 import { readJSON, writeJSON } from './storage';
@@ -18,6 +19,7 @@ export interface CustomColors {
 interface SettingsData {
 	sound: boolean;
 	theme: string;
+	face: string;
 	custom: CustomColors;
 	vibes: Record<string, boolean>;
 }
@@ -33,6 +35,7 @@ class Settings {
 	#data = $state<SettingsData>({
 		sound: true,
 		theme: DEFAULT_THEME,
+		face: DEFAULT_FACE,
 		custom: { ...DEFAULT_CUSTOM },
 		vibes: defaultVibes()
 	});
@@ -45,6 +48,7 @@ class Settings {
 				saved.theme && (isTheme(saved.theme) || saved.theme === 'custom')
 					? saved.theme
 					: DEFAULT_THEME,
+			face: saved.face && isFace(saved.face) ? saved.face : DEFAULT_FACE,
 			custom: {
 				felt:
 					saved.custom && isHexColor(saved.custom.felt) ? saved.custom.felt : DEFAULT_CUSTOM.felt,
@@ -80,6 +84,15 @@ class Settings {
 	set theme(value: string) {
 		if (!isTheme(value) && value !== 'custom') return;
 		this.#data = { ...this.#data, theme: value };
+		this.#persist();
+	}
+
+	get face(): string {
+		return this.#data.face;
+	}
+	set face(value: string) {
+		if (!isFace(value)) return;
+		this.#data = { ...this.#data, face: value };
 		this.#persist();
 	}
 

@@ -10,7 +10,10 @@
 			try {
 				var s = JSON.parse(localStorage.getItem('patience:settings'));
 				if (s && s.theme) document.documentElement.dataset.theme = s.theme;
-			} catch (e) {}
+				document.documentElement.dataset.face = (s && s.face) || 'cozy';
+			} catch (e) {
+				document.documentElement.dataset.face = 'cozy';
+			}
 		</script>
 		%sveltekit.head%
 	</head>
