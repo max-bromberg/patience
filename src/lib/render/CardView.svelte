@@ -79,7 +79,7 @@
 	.back {
 		position: absolute;
 		inset: 0;
-		border-radius: 0.42em;
+		border-radius: var(--card-radius);
 		backface-visibility: hidden;
 		-webkit-backface-visibility: hidden;
 		box-shadow: var(--card-shadow);

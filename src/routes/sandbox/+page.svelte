@@ -118,6 +118,7 @@
 	.wrap {
 		min-height: 100dvh;
 		background: var(--table-bg);
+		background-blend-mode: var(--table-blend);
 		color: var(--ui-text);
 		display: flex;
 		flex-direction: column;

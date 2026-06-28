@@ -65,6 +65,7 @@
 		display: flex;
 		flex-direction: column;
 		background: var(--table-bg);
+		background-blend-mode: var(--table-blend);
 		color: var(--ui-text);
 		font-family: var(--font-rounded);
 	}

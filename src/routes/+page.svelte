@@ -25,48 +25,55 @@
 </svelte:head>
 
 <main class="home">
-	<header class="hero">
-		<div class="logo" aria-hidden="true">
-			<span class="pip a">🂡</span><span class="pip b">🂾</span><span class="pip c">🃞</span>
-		</div>
-		<h1>Patience</h1>
-		<p class="tagline">A cozy collection of single-player card games.</p>
-	</header>
+	<div class="shell">
+		<header class="hero">
+			<div class="logo" aria-hidden="true">
+				<span class="pip a">🂡</span><span class="pip b">🂾</span><span class="pip c">🃞</span>
+			</div>
+			<h1>Patience</h1>
+			<p class="tagline">A cozy collection of single-player card games.</p>
+		</header>
 
-	{#each groups as [family, metas] (family)}
-		<section class="family">
-			<h2>{titleCase(family)}</h2>
-			<ul class="grid">
-				{#each metas as meta (meta.id)}
-					<li>
-						<a class="tile" href={resolve(`/play/${meta.id}`)}>
-							<span class="art" aria-hidden="true">
-								<span class="mini m1"></span>
-								<span class="mini m2"></span>
-								<span class="mini m3"></span>
-							</span>
-							<span class="name">{meta.name}</span>
-							<span class="blurb">{meta.blurb}</span>
-							<span class="pill {meta.difficulty}">{meta.difficulty}</span>
-						</a>
-					</li>
-				{/each}
-			</ul>
-		</section>
-	{/each}
+		{#each groups as [family, metas] (family)}
+			<section class="family">
+				<h2>{titleCase(family)}</h2>
+				<ul class="grid">
+					{#each metas as meta (meta.id)}
+						<li>
+							<a class="tile" href={resolve(`/play/${meta.id}`)}>
+								<span class="art" aria-hidden="true">
+									<span class="mini m1"></span>
+									<span class="mini m2"></span>
+									<span class="mini m3"></span>
+								</span>
+								<span class="name">{meta.name}</span>
+								<span class="blurb">{meta.blurb}</span>
+								<span class="pill {meta.difficulty}">{meta.difficulty}</span>
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/each}
 
-	<footer class="foot">More games dealing soon.</footer>
+		<footer class="foot">More games dealing soon.</footer>
+	</div>
 </main>
 
 <style>
 	.home {
 		min-height: 100dvh;
 		background: var(--table-bg);
+		background-blend-mode: var(--table-blend);
 		color: var(--ui-text);
 		font-family: var(--font-rounded);
-		padding: calc(1.5rem + env(safe-area-inset-top)) 1.1rem calc(2rem + env(safe-area-inset-bottom));
+		padding: calc(1.5rem + env(safe-area-inset-top)) clamp(1.1rem, 4vw, 3rem)
+			calc(2rem + env(safe-area-inset-bottom));
 		box-sizing: border-box;
-		max-width: 880px;
+	}
+
+	.shell {
+		max-width: 1180px;
 		margin: 0 auto;
 	}
 
@@ -119,8 +126,9 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-		gap: 0.8rem;
+		grid-template-columns: repeat(auto-fill, minmax(190px, 230px));
+		justify-content: center;
+		gap: 0.9rem;
 	}
 
 	.tile {
