@@ -6,17 +6,35 @@
  */
 
 import type { GameMeta } from '$lib/engine';
+import type { AiCardGame } from './aigame';
+import { hearts } from './hearts';
+import { spades } from './spades';
+import { ohhell } from './ohhell';
 
+/**
+ * A trick-taking catalog entry. Two engine kinds exist: the bespoke Euchre
+ * state machine (selected by `variant`), and the generic 52-card
+ * {@link AiCardGame} interface (carried in `game`). The player route dispatches
+ * on `kind`.
+ */
 export interface TrickGame {
 	readonly meta: GameMeta;
-	/** Which engine variant in {@link VARIANTS} this catalog entry plays. */
-	readonly variant: string;
+	readonly kind: 'euchre' | 'ai';
+	/** Euchre variant id (kind === 'euchre'). */
+	readonly variant?: string;
+	/** The pluggable 52-card game (kind === 'ai'). */
+	readonly game?: AiCardGame<unknown>;
+}
+
+function ai(game: AiCardGame<unknown>): TrickGame {
+	return { meta: game.meta, kind: 'ai', game };
 }
 
 const BOWERS =
 	'The Jack of trump (right bower) is highest, then the Jack of the same colour (left bower), then A K Q 10 9 of trump.';
 
 const euchre: TrickGame = {
+	kind: 'euchre',
 	variant: 'euchre',
 	meta: {
 		id: 'euchre',
@@ -36,6 +54,7 @@ const euchre: TrickGame = {
 };
 
 const euchre2: TrickGame = {
+	kind: 'euchre',
 	variant: 'euchre2',
 	meta: {
 		id: 'euchre2',
@@ -55,6 +74,7 @@ const euchre2: TrickGame = {
 };
 
 const euchre3: TrickGame = {
+	kind: 'euchre',
 	variant: 'euchre3',
 	meta: {
 		id: 'euchre3',
@@ -73,7 +93,14 @@ const euchre3: TrickGame = {
 	}
 };
 
-export const trickGames: readonly TrickGame[] = [euchre, euchre2, euchre3];
+export const trickGames: readonly TrickGame[] = [
+	euchre,
+	euchre2,
+	euchre3,
+	ai(hearts),
+	ai(spades),
+	ai(ohhell)
+];
 
 export const trickCatalog: readonly GameMeta[] = trickGames.map((g) => g.meta);
 

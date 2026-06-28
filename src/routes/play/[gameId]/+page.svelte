@@ -9,7 +9,13 @@
 	import { daily } from '$lib/storage/daily.svelte';
 	import { clearProgress, loadProgress, saveProgress } from '$lib/storage/resume';
 	import { settings } from '$lib/storage/settings.svelte';
-	import { EuchreController, EuchreTable, getTrickGame } from '$lib/trick';
+	import {
+		AiTableController,
+		EuchreController,
+		EuchreTable,
+		TrickTable,
+		getTrickGame
+	} from '$lib/trick';
 
 	const gameId = $derived(page.params.gameId);
 	const game = $derived(getGame(gameId ?? ''));
@@ -49,11 +55,16 @@
 		return new GameController(game, freshSeed());
 	});
 
-	// Trick-taking controller (Euchre family). Recreated only when the game id or
-	// url seed changes; a `{#key}` around the table disposes the old timer.
+	// Trick-taking controllers. Recreated only when the game id or url seed
+	// changes; a `{#key}` around the table disposes the old timer. Euchre uses its
+	// bespoke engine; everything else is a generic 52-card AiCardGame.
 	let euchre = $derived.by(() => {
-		if (!trick || gameId === undefined) return null;
+		if (!trick || trick.kind !== 'euchre' || gameId === undefined) return null;
 		return new EuchreController(urlSeed ?? freshSeed(), trick.variant);
+	});
+	let aiGame = $derived.by(() => {
+		if (!trick || trick.kind !== 'ai' || !trick.game || gameId === undefined) return null;
+		return new AiTableController(trick.game, urlSeed ?? freshSeed());
 	});
 
 	// Persist the casual game after every change; clear it once won. Reading
@@ -161,6 +172,15 @@
 				>
 					<span class="ico">🔀</span>
 				</button>
+			{:else if aiGame}
+				<button
+					class="tool"
+					onclick={() => aiGame.newDeal(freshSeed())}
+					aria-label="New game"
+					title="New game"
+				>
+					<span class="ico">🔀</span>
+				</button>
 			{/if}
 			<button
 				class="tool"
@@ -188,6 +208,12 @@
 		<div class="play">
 			{#key euchre}
 				<EuchreTable controller={euchre} />
+			{/key}
+		</div>
+	{:else if aiGame}
+		<div class="play">
+			{#key aiGame}
+				<TrickTable controller={aiGame} />
 			{/key}
 		</div>
 	{:else if !game}

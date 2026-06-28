@@ -45,7 +45,10 @@
 		acesup: { motif: 'aces', suit: 'spades' },
 		euchre: { motif: 'trick', suit: 'hearts', badge: '4' },
 		euchre2: { motif: 'trick', suit: 'spades', badge: '2' },
-		euchre3: { motif: 'trick', suit: 'diamonds', badge: '3' }
+		euchre3: { motif: 'trick', suit: 'diamonds', badge: '3' },
+		hearts: { motif: 'fan', suit: 'hearts' },
+		spades: { motif: 'fan', suit: 'spades' },
+		ohhell: { motif: 'trick', suit: 'diamonds', badge: '?' }
 	};
 
 	export function iconFor(id: string): IconSpec {
