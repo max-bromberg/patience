@@ -19,7 +19,9 @@
 		| 'stats'
 		| 'settings'
 		| 'dice'
-		| 'continue';
+		| 'continue'
+		| 'share'
+		| 'check';
 </script>
 
 <script lang="ts">
@@ -80,6 +82,14 @@
 		<circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none" />
 	{:else if name === 'continue'}
 		<polygon points="7 5 19 12 7 19" fill="currentColor" />
+	{:else if name === 'share'}
+		<circle cx="18" cy="5" r="2.6" />
+		<circle cx="6" cy="12" r="2.6" />
+		<circle cx="18" cy="19" r="2.6" />
+		<line x1="8.3" y1="13.4" x2="15.7" y2="17.6" />
+		<line x1="15.7" y1="6.4" x2="8.3" y2="10.6" />
+	{:else if name === 'check'}
+		<polyline points="5 12.5 10 17.5 19 6.5" />
 	{/if}
 </svg>
 

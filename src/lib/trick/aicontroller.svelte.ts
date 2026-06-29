@@ -14,16 +14,23 @@ export class AiTableController<S> {
 	private readonly game: AiCardGame<S>;
 	private cur: S = $state.raw(undefined as unknown as S);
 	private timer: ReturnType<typeof setTimeout> | null = null;
+	private _seed: number;
 	thinking = $state(false);
 
 	constructor(game: AiCardGame<S>, seed: number) {
 		this.game = game;
+		this._seed = seed;
 		this.cur = game.newGame(seed);
 		this.pump();
 	}
 
 	get view(): TableView {
 		return this.game.view(this.cur);
+	}
+
+	/** Seed of the current deal (for shareable reproducible links). */
+	get seed(): number {
+		return this._seed;
 	}
 
 	bid(n: number): void {
@@ -43,6 +50,7 @@ export class AiTableController<S> {
 
 	newDeal(seed: number): void {
 		this.stop();
+		this._seed = seed;
 		this.cur = this.game.newGame(seed);
 		sfx.deal();
 		this.pump();

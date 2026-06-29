@@ -20,6 +20,13 @@
 	import { stats } from '$lib/storage/stats.svelte';
 
 	const sampleCard = makeCard('hearts', 1, { faceUp: true });
+	// Hero logo cards. Rendered with the real CardView (not Unicode playing-card
+	// glyphs, which render inconsistently across platforms / fonts).
+	const logoCards = [
+		makeCard('spades', 1, { faceUp: true }),
+		makeCard('hearts', 13, { faceUp: true }),
+		makeCard('clubs', 13, { faceUp: true })
+	];
 
 	let showStats = $state(false);
 
@@ -106,7 +113,9 @@
 	<div class="shell">
 		<header class="hero">
 			<div class="logo" aria-hidden="true">
-				<span class="pip a">🂡</span><span class="pip b">🂾</span><span class="pip c">🃞</span>
+				{#each logoCards as card, i (card.id)}
+					<span class="logo-card c{i}"><CardView {card} w={56} h={80} /></span>
+				{/each}
 			</div>
 			<h1>Patience</h1>
 			<p class="tagline">A cozy collection of single-player card games.</p>
@@ -169,7 +178,10 @@
 			</section>
 		{/each}
 
-		<footer class="foot">More games dealing soon.</footer>
+		<footer class="foot">
+			<p>More games dealing soon.</p>
+			<p class="made">Made with <span class="heart">♥</span> for Sam</p>
+		</footer>
 	</div>
 
 	{#if showSettings}
@@ -360,23 +372,28 @@
 		margin-bottom: 1.75rem;
 	}
 	.logo {
-		font-size: clamp(2.75rem, 14vw, 4rem);
-		line-height: 1;
+		display: flex;
+		justify-content: center;
+		align-items: flex-end;
 		filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.35));
 	}
-	.logo .pip {
-		display: inline-block;
-		color: #fffdf8;
+	.logo-card {
+		display: block;
+		line-height: 0;
 	}
-	.logo .a {
-		transform: rotate(-12deg) translateY(4px);
+	.logo-card.c0 {
+		transform: rotate(-13deg) translateY(3px);
+		margin-right: -16px;
+		z-index: 1;
 	}
-	.logo .b {
-		transform: translateY(-6px);
-		margin: 0 -0.35em;
+	.logo-card.c1 {
+		transform: translateY(-7px);
+		z-index: 2;
 	}
-	.logo .c {
-		transform: rotate(12deg) translateY(4px);
+	.logo-card.c2 {
+		transform: rotate(13deg) translateY(3px);
+		margin-left: -16px;
+		z-index: 1;
 	}
 	h1 {
 		margin: 0.4rem 0 0;
@@ -424,15 +441,16 @@
 		padding: 1rem 1.25rem;
 		border-radius: 1rem;
 		text-decoration: none;
-		color: inherit;
-		/* tint with the active theme accent so it recolors with the theme */
+		color: var(--ui-text);
+		/* Build on the theme-aware tile surface (light on light themes, dark on
+		   dark ones) with an accent tint, so contrast holds across every theme. */
 		background: linear-gradient(
 			120deg,
-			color-mix(in srgb, var(--drop-ring) 28%, transparent),
-			rgba(0, 0, 0, 0.25)
+			color-mix(in srgb, var(--drop-ring) 24%, var(--tile-bg)),
+			var(--tile-bg)
 		);
-		border: 1px solid color-mix(in srgb, var(--drop-ring) 38%, transparent);
-		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+		border: 1px solid color-mix(in srgb, var(--drop-ring) 45%, var(--tile-border));
+		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
 		transition: transform 0.16s var(--ease-out);
 	}
 	.daily:hover {
@@ -446,7 +464,8 @@
 		font-size: 0.7rem;
 		text-transform: uppercase;
 		letter-spacing: 0.12em;
-		color: var(--drop-ring);
+		/* nudge the accent toward the text colour so it never goes too pale to read */
+		color: color-mix(in srgb, var(--drop-ring) 55%, var(--ui-text));
 		font-weight: 800;
 	}
 	.daily-game {
@@ -474,7 +493,7 @@
 	.daily-cta {
 		margin-top: 0.3rem;
 		font-weight: 700;
-		color: var(--drop-ring);
+		color: color-mix(in srgb, var(--drop-ring) 55%, var(--ui-text));
 	}
 
 	.family h2 {
@@ -591,6 +610,19 @@
 		font-size: 0.85rem;
 		margin-top: 2rem;
 		font-style: italic;
+	}
+	.foot p {
+		margin: 0;
+	}
+	.foot .made {
+		margin-top: 0.6rem;
+		font-size: 0.75rem;
+		font-style: normal;
+		opacity: 0.85;
+	}
+	.foot .heart {
+		color: #d9485f;
+		font-style: normal;
 	}
 
 	.top-actions {

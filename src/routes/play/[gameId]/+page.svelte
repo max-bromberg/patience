@@ -6,6 +6,8 @@
 	import { getGame } from '$lib/games/registry';
 	import { GameController, Icon, Table } from '$lib/render';
 	import Confetti from '$lib/render/Confetti.svelte';
+	import ShareButton from '$lib/render/ShareButton.svelte';
+	import { buildShareText, SITE } from '$lib/share';
 	import { sfx } from '$lib/render/sound';
 	import { daily } from '$lib/storage/daily.svelte';
 	import { clearProgress, loadProgress, saveProgress } from '$lib/storage/resume';
@@ -113,13 +115,15 @@
 	});
 
 	let solRecorded = false;
+	let solTimeMs = $state(0); // final elapsed time of the last solitaire win (for sharing)
 	$effect(() => {
 		if (!controller || gameId === undefined) return;
 		if (controller.won) {
 			if (!solRecorded) {
+				solTimeMs = Math.round(now() - startedAt);
 				stats.record(gameId, true, {
 					moves: controller.moveCount,
-					timeMs: Math.round(now() - startedAt)
+					timeMs: solTimeMs
 				});
 				solRecorded = true;
 				celebrate(gameId);
@@ -190,6 +194,57 @@
 		void gameId;
 		void controller?.seed;
 		return stopAuto;
+	});
+
+	// Wordle-style shareable result blurb, built once a game concludes. Solitaire
+	// links carry the seed so a friend can play the exact same deal.
+	const solShareText = $derived.by(() => {
+		if (!controller || gameId === undefined || !meta) return null;
+		if (!controller.won && !controller.stuck) return null;
+		const url = `${SITE}/play/${gameId}?seed=${controller.seed}${isDaily ? '&daily=1' : ''}`;
+		return buildShareText({
+			type: 'solitaire',
+			name: meta.name,
+			gameId,
+			url,
+			won: controller.won,
+			moves: controller.moveCount,
+			timeMs: controller.won ? solTimeMs : undefined,
+			daily: isDaily,
+			streak: daily.streak
+		});
+	});
+
+	const trickShareText = $derived.by(() => {
+		if (gameId === undefined || !meta) return null;
+		if (euchre && euchre.state.phase === 'gameOver') {
+			const sc = euchre.state.scores;
+			const scores = sc.map((value, i) => ({
+				label: i === 0 ? 'You' : sc.length === 2 ? 'Them' : `Team ${i + 1}`,
+				value,
+				you: i === 0
+			}));
+			return buildShareText({
+				type: 'trick',
+				name: meta.name,
+				gameId,
+				url: `${SITE}/play/${gameId}?seed=${euchre.seed}`,
+				won: euchre.state.winner === 0,
+				scores
+			});
+		}
+		if (aiGame && aiGame.view.phase === 'gameOver') {
+			const v = aiGame.view;
+			return buildShareText({
+				type: 'trick',
+				name: meta.name,
+				gameId,
+				url: `${SITE}/play/${gameId}?seed=${aiGame.seed}`,
+				won: v.winnerLabel?.startsWith('You') ?? false,
+				scores: v.scoreboard.map((s) => ({ label: s.label, value: s.value, you: s.you }))
+			});
+		}
+		return null;
 	});
 
 	/** Deal a fresh game for whichever controller is active. */
@@ -342,14 +397,22 @@
 					{#if isDaily}
 						<p class="streak">Daily streak: 🔥 {daily.streak}</p>
 					{/if}
-					<button class="btn primary" onclick={() => controller.newDeal(freshSeed())}>
-						Play again
-					</button>
+					<div class="win-actions">
+						{#if solShareText}
+							<ShareButton text={solShareText} variant="light" />
+						{/if}
+						<button class="btn primary" onclick={() => controller.newDeal(freshSeed())}>
+							Play again
+						</button>
+					</div>
 				</div>
 			</div>
 		{:else if controller.stuck}
 			<div class="stuck" role="status">
 				<span>No moves left.</span>
+				{#if solShareText}
+					<ShareButton text={solShareText} variant="dark" label="Share" />
+				{/if}
 				<button class="btn" onclick={() => controller.undo()} disabled={!controller.canUndo}>
 					Undo
 				</button>
@@ -357,6 +420,12 @@
 				>
 			</div>
 		{/if}
+	{/if}
+
+	{#if trickShareText}
+		<div class="share-dock">
+			<ShareButton text={trickShareText} variant="dark" />
+		</div>
 	{/if}
 
 	{#if streakToast}
@@ -569,6 +638,24 @@
 	.win-card h2 {
 		margin: 0;
 		font-size: 1.5rem;
+	}
+	.win-actions {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	/* Floating share affordance for concluded trick games (their game-over panel
+	   is centered, so this sits clear of it at the bottom). */
+	.share-dock {
+		position: fixed;
+		left: 50%;
+		bottom: calc(1rem + env(safe-area-inset-bottom));
+		transform: translateX(-50%);
+		z-index: 4000;
+		animation: fade 0.3s var(--ease-out);
 	}
 	@keyframes fade {
 		from {

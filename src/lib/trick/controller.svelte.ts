@@ -29,17 +29,24 @@ export class EuchreController {
 	private cur: EuchreState = $state.raw(newGame(0));
 	private timer: ReturnType<typeof setTimeout> | null = null;
 	private readonly variantId: string;
+	private _seed = 0;
 	/** True while the engine is auto-advancing AI turns (UI dims human controls). */
 	thinking = $state(false);
 
 	constructor(seed: number, variantId = 'euchre') {
 		this.variantId = variantId;
+		this._seed = seed;
 		this.cur = newGame(seed, variantId);
 		this.pump();
 	}
 
 	get state(): EuchreState {
 		return this.cur;
+	}
+
+	/** Seed of the current deal (for shareable reproducible links). */
+	get seed(): number {
+		return this._seed;
 	}
 
 	/** Whose turn it is, 0=human South. */
@@ -105,6 +112,7 @@ export class EuchreController {
 
 	newDeal(seed: number): void {
 		this.stop();
+		this._seed = seed;
 		this.cur = newGame(seed, this.variantId);
 		sfx.deal();
 		this.pump();
