@@ -1,11 +1,13 @@
 /**
- * Background ambience — a soft, generative pad with a gentle bell melody on
- * top. Several bright, major-key "moods" rotate one per session so it stays
- * fresh; each wanders an eight-chord progression (long enough not to feel
- * loopy) with a soft volume swell and a touch of filter movement so it
- * breathes. A sparse, warm "twinkle" line picks notes out of the current
- * chord so the music feels playful and tuneful, not like a drone. No audio
- * assets; all synthesized via Web Audio, SSR-safe, started from a user gesture.
+ * Background ambience — a warm, music-box style score. Rather than a sustained
+ * drone, each bright major-key "mood" plays a flowing arpeggio of soft bell
+ * tones (a celesta/glockenspiel timbre: fundamental + an octave partial) drawn
+ * only from the notes of the current chord, so it always stays consonant. A
+ * gentle echo gives it lush space and a quiet octave pad grounds the harmony.
+ * Notes are re-struck per step (never pitch-glided), which keeps the harmony
+ * clean and the texture lively instead of monotone. Moods rotate one per
+ * session so it stays fresh. No audio assets; all synthesized via Web Audio,
+ * SSR-safe, started only from a user gesture.
  *
  * iOS Safari needs extra care to make a synth-only graph audible:
  *  - a 1-sample silent buffer must be played *inside* the unlocking gesture,
@@ -31,136 +33,104 @@ const ch = (...names: string[]): number[] => names.map(hz);
 
 interface Mood {
 	readonly name: string;
-	readonly wave: OscillatorType;
-	/** Open, consonant four-note voicings the pad wanders through. */
+	/** Four-note major-key voicings the arpeggio draws its notes from. */
 	readonly chords: number[][];
-	readonly chordMs: number;
-	readonly glideMs: number; // portamento between chords (ms)
-	readonly cutoff: number; // lowpass base (higher = more open/airy)
-	readonly detune: number; // cents of chorus spread (small = less wavering)
-	readonly swellRate: number; // Hz of the volume LFO
-	readonly swellDepth: number; // fraction of base gain
-	readonly sweepDepth: number; // Hz of slow filter movement (0 = still)
-	readonly twinkleMs: number; // cadence of the bell melody (0 = none)
-	readonly twinkleGain: number; // peak bell level at the filter input
+	readonly stepMs: number; // time between arpeggio notes (tempo/feel)
+	readonly stepsPerChord: number; // notes played before moving to the next chord
+	readonly cutoff: number; // lowpass base (higher = brighter/airier)
+	readonly arpGain: number; // peak level of each bell pluck
+	readonly padGain: number; // level of the soft octave pad bed (0 = none)
+	readonly delayTime: number; // echo spacing (s)
+	readonly feedback: number; // echo feedback amount (0–0.5)
 }
 
-// Bright, major-key, openly voiced moods — warm and cheerful, never eerie.
+// Bright, major-key moods. The progressions are simple and uplifting; the
+// music-box arpeggio + echo carry the melody.
 const MOODS: Mood[] = [
 	{
-		// C major, classic happy pop motion (I–V–vi–IV …)
+		// C major, lively and sunny (I–V–vi–IV …)
 		name: 'Sunbeam',
-		wave: 'triangle',
 		chords: [
-			ch('C4', 'E4', 'G4', 'D5'), // Cadd9
-			ch('G3', 'B3', 'D4', 'G4'), // G
-			ch('A3', 'E4', 'G4', 'C5'), // Am7
-			ch('F3', 'A3', 'C4', 'E4'), // Fmaj7
 			ch('C4', 'E4', 'G4', 'C5'), // C
-			ch('G3', 'B3', 'D4', 'D5'), // G
+			ch('G3', 'B3', 'D4', 'G4'), // G
+			ch('A3', 'C4', 'E4', 'A4'), // Am
 			ch('F3', 'A3', 'C4', 'F4'), // F
-			ch('G3', 'B3', 'D4', 'F4') // G7
+			ch('C4', 'E4', 'G4', 'C5'), // C
+			ch('G3', 'B3', 'D4', 'G4'), // G
+			ch('F3', 'A3', 'C4', 'F4'), // F
+			ch('G3', 'B3', 'D4', 'G4') // G
 		],
-		chordMs: 11000,
-		glideMs: 2600,
-		cutoff: 2600,
-		detune: 1.5,
-		swellRate: 0.05,
-		swellDepth: 0.12,
-		sweepDepth: 160,
-		twinkleMs: 2400,
-		twinkleGain: 0.15
+		stepMs: 300,
+		stepsPerChord: 12,
+		cutoff: 3200,
+		arpGain: 0.1,
+		padGain: 0.05,
+		delayTime: 0.3,
+		feedback: 0.26
 	},
 	{
-		// F major, soft and dreamy with maj7 colour
+		// F major, soft and dreamy
 		name: 'Lagoon',
-		wave: 'sine',
 		chords: [
-			ch('F3', 'A3', 'C4', 'E4'), // Fmaj7
-			ch('G3', 'C4', 'E4', 'G4'), // C
-			ch('D3', 'A3', 'C4', 'F4'), // Dm7
-			ch('A#3', 'D4', 'F4', 'A4'), // A#(Bb)maj7
 			ch('F3', 'A3', 'C4', 'F4'), // F
-			ch('G3', 'C4', 'E4', 'G4'), // C
-			ch('G3', 'A#3', 'D4', 'F4'), // Gm7
-			ch('G3', 'C4', 'E4', 'A4') // C add
+			ch('C4', 'E4', 'G4', 'C5'), // C
+			ch('D3', 'F3', 'A3', 'D4'), // Dm
+			ch('A#3', 'D4', 'F4', 'A#4'), // A#(Bb)
+			ch('F3', 'A3', 'C4', 'F4'), // F
+			ch('C4', 'E4', 'G4', 'C5'), // C
+			ch('D3', 'F3', 'A3', 'D4'), // Dm
+			ch('C4', 'E4', 'G4', 'C5') // C
 		],
-		chordMs: 12500,
-		glideMs: 3200,
-		cutoff: 2200,
-		detune: 1,
-		swellRate: 0.04,
-		swellDepth: 0.11,
-		sweepDepth: 110,
-		twinkleMs: 3000,
-		twinkleGain: 0.13
+		stepMs: 360,
+		stepsPerChord: 12,
+		cutoff: 2700,
+		arpGain: 0.1,
+		padGain: 0.06,
+		delayTime: 0.36,
+		feedback: 0.3
 	},
 	{
-		// D major, brighter and a touch playful
+		// D major, brightest and most playful
 		name: 'Carousel',
-		wave: 'triangle',
 		chords: [
 			ch('D4', 'F#4', 'A4', 'D5'), // D
 			ch('A3', 'C#4', 'E4', 'A4'), // A
-			ch('B3', 'D4', 'F#4', 'A4'), // Bm7
+			ch('B3', 'D4', 'F#4', 'B4'), // Bm
 			ch('G3', 'B3', 'D4', 'G4'), // G
 			ch('D4', 'F#4', 'A4', 'D5'), // D
 			ch('A3', 'C#4', 'E4', 'A4'), // A
 			ch('G3', 'B3', 'D4', 'G4'), // G
-			ch('A3', 'C#4', 'E4', 'G4') // A7
+			ch('A3', 'C#4', 'E4', 'A4') // A
 		],
-		chordMs: 10000,
-		glideMs: 2200,
-		cutoff: 2800,
-		detune: 2,
-		swellRate: 0.06,
-		swellDepth: 0.13,
-		sweepDepth: 150,
-		twinkleMs: 2000,
-		twinkleGain: 0.16
+		stepMs: 280,
+		stepsPerChord: 16,
+		cutoff: 3400,
+		arpGain: 0.1,
+		padGain: 0.05,
+		delayTime: 0.28,
+		feedback: 0.24
 	}
 ];
 
-// Gentle melodic contour: indices into the (four-note) current chord. Steps up
-// and back down so the bell line arcs rather than wandering randomly.
-const TWINKLE_CONTOUR = [0, 1, 2, 3, 2, 1, 2, 0, 1, 3, 2, 1];
-
-/** Build a short silent WAV as an object URL (lazily, browser only). */
-function silentWavUrl(): string {
-	const rate = 8000;
-	const samples = rate; // 1 second of silence
-	const buf = new ArrayBuffer(44 + samples);
-	const v = new DataView(buf);
-	const str = (off: number, s: string) => {
-		for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i));
-	};
-	str(0, 'RIFF');
-	v.setUint32(4, 36 + samples, true);
-	str(8, 'WAVE');
-	str(12, 'fmt ');
-	v.setUint32(16, 16, true);
-	v.setUint16(20, 1, true); // PCM
-	v.setUint16(22, 1, true); // mono
-	v.setUint32(24, rate, true);
-	v.setUint32(28, rate, true);
-	v.setUint16(32, 1, true);
-	v.setUint16(34, 8, true); // 8-bit
-	str(36, 'data');
-	v.setUint32(40, samples, true);
-	for (let i = 0; i < samples; i++) v.setUint8(44 + i, 128); // 8-bit silence
-	return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
-}
+// Melodic contour: indices into the 8-note (two-octave) pool of the current
+// chord. A length coprime with the chord step counts so the figure slowly
+// evolves across the loop rather than repeating in lockstep. -1 is a rest, for
+// a little music-box phrasing.
+const ARP = [0, 2, 4, 7, 5, 3, -1];
 
 class Ambience {
 	private ctx: AudioContext | null = null;
 	private master: GainNode | null = null;
 	private filter: BiquadFilterNode | null = null;
-	private voices: OscillatorNode[] = [];
+	private arpBus: GainNode | null = null;
+	private padVoices: { osc: OscillatorNode; gain: GainNode }[] = [];
 	private lfos: OscillatorNode[] = [];
+	private graph: AudioNode[] = []; // nodes to disconnect on stop
 	private timer: ReturnType<typeof setInterval> | null = null;
-	private twinkleTimer: ReturnType<typeof setInterval> | null = null;
-	private twinkleStep = 0;
 	private chordIdx = 0;
+	private chordStep = 0;
+	private arpStep = 0;
+	private pool: number[] = [];
 	private volume = 0.5;
 	private running = false;
 	private boundRecovery = false;
@@ -194,7 +164,9 @@ class Ambience {
 	}
 
 	private baseGain(): number {
-		return this.volume * 0.16; // kept under the foreground sfx
+		// bells are short/sparse, so a bit more level than a drone — with headroom
+		// kept under the echo build-up so dense passages never clip.
+		return this.volume * 0.42;
 	}
 
 	/** Play a 1-sample silent buffer to unlock audio on iOS (must be in-gesture). */
@@ -244,6 +216,11 @@ class Ambience {
 		window.addEventListener('touchend', resume);
 	}
 
+	/** Two octaves of the chord's notes, ascending — the arpeggio's note pool. */
+	private makePool(chord: number[]): number[] {
+		return [...chord, ...chord.map((f) => f * 2)].sort((a, b) => a - b);
+	}
+
 	start(): void {
 		if (this.running || !this.make()) return;
 		const ac = this.ctx!;
@@ -255,99 +232,145 @@ class Ambience {
 		this.running = true;
 
 		const master = ac.createGain();
-		// long, soft fade-in so it eases in rather than appearing
+		// soft fade-in so it eases in rather than appearing
 		master.gain.setValueAtTime(0.0001, ac.currentTime);
-		master.gain.exponentialRampToValueAtTime(Math.max(0.0002, this.baseGain()), ac.currentTime + 5);
+		master.gain.exponentialRampToValueAtTime(Math.max(0.0002, this.baseGain()), ac.currentTime + 4);
+		master.connect(ac.destination);
 
 		const filter = ac.createBiquadFilter();
 		filter.type = 'lowpass';
 		filter.frequency.value = mood.cutoff;
-		filter.Q.value = 0.5;
-		filter.connect(master).connect(ac.destination);
+		filter.Q.value = 0.4;
+		filter.connect(master);
+
+		// A damped feedback delay gives the bells a lush, spacious tail.
+		const delay = ac.createDelay(1.0);
+		delay.delayTime.value = mood.delayTime;
+		const feedback = ac.createGain();
+		feedback.gain.value = mood.feedback;
+		const damp = ac.createBiquadFilter();
+		damp.type = 'lowpass';
+		damp.frequency.value = 2200; // keep echoes soft, not brittle
+		const wet = ac.createGain();
+		wet.gain.value = 0.4;
+		delay.connect(damp).connect(feedback).connect(delay);
+		delay.connect(wet).connect(filter);
+
+		// Everything melodic feeds this bus → dry into the filter and into the echo.
+		const arpBus = ac.createGain();
+		arpBus.gain.value = 1;
+		arpBus.connect(filter);
+		arpBus.connect(delay);
+
 		this.master = master;
 		this.filter = filter;
+		this.arpBus = arpBus;
+		this.graph = [master, filter, delay, feedback, damp, wet, arpBus];
 
-		const chord = mood.chords[0];
-		this.voices = chord.map((freq, i) => {
-			const osc = ac.createOscillator();
-			osc.type = mood.wave;
-			osc.frequency.value = freq;
-			osc.detune.value = (i - (chord.length - 1) / 2) * mood.detune;
-			const g = ac.createGain();
-			// lean the voicing's top notes a touch quieter for an open, soft blend
-			g.gain.value = 0.26 - i * 0.03;
-			osc.connect(g).connect(filter);
-			osc.start();
-			return osc;
-		});
-
-		const swell = ac.createOscillator();
-		swell.type = 'sine';
-		swell.frequency.value = mood.swellRate;
-		const swellDepth = ac.createGain();
-		swellDepth.gain.value = this.baseGain() * mood.swellDepth;
-		swell.connect(swellDepth).connect(master.gain);
-		swell.start();
-		this.lfos = [swell];
-
-		if (mood.sweepDepth > 0) {
-			const sweep = ac.createOscillator();
-			sweep.type = 'sine';
-			sweep.frequency.value = 0.025;
-			const sweepDepth = ac.createGain();
-			sweepDepth.gain.value = mood.sweepDepth;
-			sweep.connect(sweepDepth).connect(filter.frequency);
-			sweep.start();
-			this.lfos.push(sweep);
-		}
+		// A very slow filter sweep adds a gentle shimmer over the loop.
+		const sweep = ac.createOscillator();
+		sweep.type = 'sine';
+		sweep.frequency.value = 0.03;
+		const sweepDepth = ac.createGain();
+		sweepDepth.gain.value = mood.cutoff * 0.1;
+		sweep.connect(sweepDepth).connect(filter.frequency);
+		sweep.start();
+		this.lfos = [sweep];
 
 		this.chordIdx = 0;
-		this.timer = setInterval(() => this.nextChord(), mood.chordMs);
+		this.chordStep = 0;
+		this.arpStep = 0;
+		this.pool = this.makePool(mood.chords[0]);
+		this.timer = setInterval(() => this.tick(), mood.stepMs);
+	}
 
-		if (mood.twinkleMs > 0) {
-			this.twinkleStep = 0;
-			// a short delay so the first bell lands after the pad has eased in
-			this.twinkleTimer = setInterval(() => this.twinkle(), mood.twinkleMs);
+	/** One arpeggio step: maybe change chord, then strike one bell note. */
+	private tick(): void {
+		const ac = this.ctx;
+		if (!ac || !this.running || !this.mood || !this.arpBus) return;
+		const mood = this.mood;
+		const t = ac.currentTime + 0.04; // tiny lookahead for clean scheduling
+
+		// At the top of each chord, swap the pad bed under the melody.
+		if (this.chordStep === 0) this.setPad(mood.chords[this.chordIdx], t);
+
+		const idx = ARP[this.arpStep % ARP.length];
+		this.arpStep++;
+		if (idx >= 0) {
+			const freq = this.pool[idx % this.pool.length];
+			// a soft accent on the first note of each chord gives a gentle pulse
+			const gain = mood.arpGain * (this.chordStep === 0 ? 1.25 : 1);
+			this.pluck(freq, t, gain);
+		}
+
+		this.chordStep++;
+		if (this.chordStep >= mood.stepsPerChord) {
+			this.chordStep = 0;
+			this.chordIdx = (this.chordIdx + 1) % mood.chords.length;
+			this.pool = this.makePool(mood.chords[this.chordIdx]);
 		}
 	}
 
-	private nextChord(): void {
+	/** A warm bell pluck: fundamental + a quieter octave partial, fast decay. */
+	private pluck(freq: number, when: number, gain: number): void {
 		const ac = this.ctx;
-		if (!ac || !this.running || !this.mood) return;
-		this.chordIdx = (this.chordIdx + 1) % this.mood.chords.length;
-		const chord = this.mood.chords[this.chordIdx];
-		const t = ac.currentTime;
-		const glide = this.mood.glideMs / 1000;
-		this.voices.forEach((osc, i) => {
-			const target = chord[i % chord.length];
-			// a moderate glide settles each chord so the harmony stays defined
-			osc.frequency.exponentialRampToValueAtTime(Math.max(1, target), t + glide);
-		});
+		if (!ac || !this.arpBus) return;
+		const env = ac.createGain();
+		env.gain.setValueAtTime(0.0001, when);
+		env.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), when + 0.012); // soft strike
+		env.gain.exponentialRampToValueAtTime(0.0001, when + 1.7); // bell-like ring-out
+		env.connect(this.arpBus);
+
+		const o1 = ac.createOscillator();
+		o1.type = 'sine';
+		o1.frequency.value = freq;
+		o1.connect(env);
+
+		const o2 = ac.createOscillator();
+		o2.type = 'sine';
+		o2.frequency.value = freq * 2; // octave shimmer
+		const o2g = ac.createGain();
+		o2g.gain.value = 0.32;
+		o2.connect(o2g).connect(env);
+
+		o1.start(when);
+		o2.start(when);
+		o1.stop(when + 1.8);
+		o2.stop(when + 1.8);
 	}
 
-	/** Pluck one warm bell note from the current chord (one octave up). */
-	private twinkle(): void {
+	/** Crossfade a soft two-note octave pad to ground the current chord. */
+	private setPad(chord: number[], when: number): void {
 		const ac = this.ctx;
-		if (!ac || !this.running || !this.mood || !this.filter) return;
-		const chord = this.mood.chords[this.chordIdx];
-		const idx = TWINKLE_CONTOUR[this.twinkleStep % TWINKLE_CONTOUR.length];
-		this.twinkleStep++;
-		// octave up for sparkle; every so often two octaves for a brighter ping
-		const octave = this.twinkleStep % 8 === 0 ? 4 : 2;
-		const freq = chord[idx % chord.length] * octave;
+		if (!ac || !this.filter || !this.mood) return;
 
-		const t = ac.currentTime;
-		const osc = ac.createOscillator();
-		osc.type = 'sine';
-		osc.frequency.value = freq;
-		const g = ac.createGain();
-		const peak = Math.max(0.0002, this.mood.twinkleGain);
-		g.gain.setValueAtTime(0.0001, t);
-		g.gain.exponentialRampToValueAtTime(peak, t + 0.03); // quick, soft attack
-		g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6); // bell-like decay
-		osc.connect(g).connect(this.filter);
-		osc.start(t);
-		osc.stop(t + 1.7);
+		// release the previous pad
+		for (const v of this.padVoices) {
+			v.gain.gain.cancelScheduledValues(when);
+			v.gain.gain.setValueAtTime(Math.max(0.0002, v.gain.gain.value), when);
+			v.gain.gain.exponentialRampToValueAtTime(0.0001, when + 1.4);
+			try {
+				v.osc.stop(when + 1.6);
+			} catch {
+				/* already scheduled */
+			}
+		}
+		this.padVoices = [];
+		if (this.mood.padGain <= 0) return;
+
+		// root + its octave: pure, consonant warmth under the bells
+		const root = chord[0];
+		for (const freq of [root, root * 2]) {
+			const osc = ac.createOscillator();
+			osc.type = 'triangle';
+			osc.frequency.value = freq;
+			const gain = ac.createGain();
+			gain.gain.setValueAtTime(0.0001, when);
+			gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, this.mood.padGain), when + 1.6);
+			osc.connect(gain).connect(this.filter);
+			osc.start(when);
+			this.padVoices.push({ osc, gain });
+		}
 	}
 
 	stop(): void {
@@ -356,8 +379,6 @@ class Ambience {
 		const ac = this.ctx;
 		if (this.timer !== null) clearInterval(this.timer);
 		this.timer = null;
-		if (this.twinkleTimer !== null) clearInterval(this.twinkleTimer);
-		this.twinkleTimer = null;
 		if (this.silentEl) this.silentEl.pause();
 		if (ac && this.master) {
 			const t = ac.currentTime;
@@ -365,15 +386,24 @@ class Ambience {
 			this.master.gain.setValueAtTime(Math.max(0.0002, this.master.gain.value), t);
 			this.master.gain.exponentialRampToValueAtTime(0.0001, t + 1.5);
 		}
-		const toStop = [...this.voices, ...this.lfos];
-		this.voices = [];
+		const oscs = [...this.lfos, ...this.padVoices.map((v) => v.osc)];
+		const graph = this.graph;
 		this.lfos = [];
+		this.padVoices = [];
+		this.graph = [];
 		setTimeout(() => {
-			for (const o of toStop) {
+			for (const o of oscs) {
 				try {
 					o.stop();
 				} catch {
 					/* already stopped */
+				}
+			}
+			for (const n of graph) {
+				try {
+					n.disconnect();
+				} catch {
+					/* already gone */
 				}
 			}
 		}, 1700);
@@ -392,6 +422,32 @@ class Ambience {
 	get isRunning(): boolean {
 		return this.running;
 	}
+}
+
+/** Build a short silent WAV as an object URL (lazily, browser only). */
+function silentWavUrl(): string {
+	const rate = 8000;
+	const samples = rate; // 1 second of silence
+	const buf = new ArrayBuffer(44 + samples);
+	const v = new DataView(buf);
+	const str = (off: number, s: string) => {
+		for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i));
+	};
+	str(0, 'RIFF');
+	v.setUint32(4, 36 + samples, true);
+	str(8, 'WAVE');
+	str(12, 'fmt ');
+	v.setUint32(16, 16, true);
+	v.setUint16(20, 1, true); // PCM
+	v.setUint16(22, 1, true); // mono
+	v.setUint32(24, rate, true);
+	v.setUint32(28, rate, true);
+	v.setUint16(32, 1, true);
+	v.setUint16(34, 8, true); // 8-bit
+	str(36, 'data');
+	v.setUint32(40, samples, true);
+	for (let i = 0; i < samples; i++) v.setUint8(44 + i, 128); // 8-bit silence
+	return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
 
 export const ambience = new Ambience();

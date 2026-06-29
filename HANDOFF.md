@@ -154,24 +154,31 @@ theme**; **UI icon set** (see below); **bright, tuneful music overhaul** (see be
   recolors automatically with any theme / custom palette. Glyphs are card-themed
   where it reads well (`deal` = two shuffling cards, `dice` for random,
   `continue` = play). Wired into the play top bar (`back/undo/deal/sound-on/
-  sound-off/help/auto`) and the home top-right (`stats/settings`) + quick actions
+sound-off/help/auto`) and the home top-right (`stats/settings`) + quick actions
   (`dice/continue`). Tap targets kept ≥ 2.3rem and the existing `aria-label`s
   preserved. Verified at 390px and 1366px.
-- **Music overhaul (DONE).** `src/lib/render/music.ts` was rewritten from the old
-  low/minor "moods" (which read as brooding/eerie) to three bright **major-key**
-  moods (Sunbeam C, Lagoon F, Dusk→**Carousel** D), each an **8-chord** voicing
-  in a higher register with a shorter glide so chords stay defined, a higher
-  filter cutoff for air, and a **sparse bell "twinkle" melody** that plucks notes
-  from the current chord so it feels playful and tuneful, not a drone. Chords are
-  written by note name via a small `hz()` helper. Default-on / gesture-gated /
-  iOS plumbing all unchanged.
+- **Music overhaul (DONE, two passes).** `src/lib/render/music.ts` is now a
+  **music-box / celesta engine**, not a pad. The first pass (bright major chords +
+  glide + a twinkle) still read as dissonant/monotone because of the gliding,
+  detuned sustained voices. The current engine drops the drone entirely: each of
+  three major-key moods (Sunbeam C, Lagoon F, Carousel D) plays a **flowing
+  arpeggio of soft bell plucks** (additive: fundamental + an octave partial)
+  drawn **only from the current chord's notes** (an 8-note, two-octave pool via
+  `makePool`), stepped by a short `ARP` contour. Notes are **re-struck, never
+  pitch-glided**, so the harmony stays clean; a **damped feedback delay** adds
+  lush space and a **soft root+octave pad** (`setPad`, crossfaded) grounds it.
+  Per-mood knobs: `stepMs`, `stepsPerChord`, `cutoff`, `arpGain`, `padGain`,
+  `delayTime`, `feedback`. Chords written by note name via `hz()`. Gain staging
+  was checked analytically (worst-case peak ≈0.4, no clipping); `baseGain` keeps
+  headroom under the echo. Default-on / gesture-gated / iOS plumbing unchanged.
 
 ## Pending / next up
 
 1. **Audition the new music on a real device / with audio** (headless can't play
-   sound). Confirm it reads as warm/bright/fun, the bell twinkle sits gently
-   under the pad, and the per-session mood rotation works (Sunbeam → Lagoon →
-   Carousel). Tune `twinkleGain` / `chordMs` / `cutoff` per mood if needed.
+   sound). Confirm the music-box arpeggio reads as warm/bright/fun and stays
+   consonant, the echo isn't washing out, and the per-session mood rotation works
+   (Sunbeam → Lagoon → Carousel). Tune the per-mood knobs (`arpGain`, `stepMs`,
+   `cutoff`, `feedback`, `padGain`) if any mood needs it.
 2. **Verify the daily-challenge recolor** across a few themes (blossom/ocean/
    custom) and light themes — confirm contrast/legibility. (color-mix is used;
    supported in current Safari/Chrome.)
