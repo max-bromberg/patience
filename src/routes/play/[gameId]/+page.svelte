@@ -4,7 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { dateKey, previousKey } from '$lib/daily';
 	import { getGame } from '$lib/games/registry';
-	import { GameController, Table } from '$lib/render';
+	import { GameController, Icon, Table } from '$lib/render';
 	import Confetti from '$lib/render/Confetti.svelte';
 	import { sfx } from '$lib/render/sound';
 	import { daily } from '$lib/storage/daily.svelte';
@@ -235,7 +235,7 @@
 <div class="screen">
 	<header class="bar">
 		<a class="tool" href={resolve('/')} aria-label="Back to catalog" title="Back to catalog">
-			<span class="ico">‹</span>
+			<Icon name="back" />
 		</a>
 		<span class="title">
 			{meta?.name ?? 'Game'}
@@ -251,7 +251,7 @@
 						aria-label="Auto-finish"
 						title="Auto-finish"
 					>
-						<span class="ico">⏩</span>
+						<Icon name="auto" />
 					</button>
 				{/if}
 				<button
@@ -261,7 +261,7 @@
 					aria-label="Undo"
 					title="Undo"
 				>
-					<span class="ico">↩</span>
+					<Icon name="undo" />
 				</button>
 				<button
 					class="tool"
@@ -269,7 +269,7 @@
 					aria-label="New deal"
 					title="New deal"
 				>
-					<span class="ico">🔀</span>
+					<Icon name="deal" />
 				</button>
 			{:else if euchre}
 				<button
@@ -278,7 +278,7 @@
 					aria-label="New game"
 					title="New game"
 				>
-					<span class="ico">🔀</span>
+					<Icon name="deal" />
 				</button>
 			{:else if aiGame}
 				<button
@@ -287,7 +287,7 @@
 					aria-label="New game"
 					title="New game"
 				>
-					<span class="ico">🔀</span>
+					<Icon name="deal" />
 				</button>
 			{/if}
 			<button
@@ -297,7 +297,7 @@
 				aria-pressed={settings.sound}
 				title={settings.sound ? 'Mute sound' : 'Unmute sound'}
 			>
-				<span class="ico">{settings.sound ? '🔊' : '🔇'}</span>
+				<Icon name={settings.sound ? 'sound-on' : 'sound-off'} />
 			</button>
 			{#if meta?.howTo}
 				<button
@@ -306,7 +306,7 @@
 					aria-label="How to play"
 					title="How to play"
 				>
-					<span class="ico">?</span>
+					<Icon name="help" />
 				</button>
 			{/if}
 		</div>
@@ -482,10 +482,6 @@
 	.tool.primary-tool {
 		background: var(--drop-ring);
 		color: #2b2208;
-	}
-	.tool .ico {
-		font-size: 1.1rem;
-		line-height: 1;
 	}
 
 	.btn {

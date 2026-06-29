@@ -1,9 +1,11 @@
 /**
- * Background ambience — a soft, generative pad. Several warm "moods" (open,
- * consonant chord sets) rotate one per session so it stays fresh; each drifts
- * slowly through its progression with a gentle volume swell and a touch of
- * filter movement so it breathes instead of droning. No audio assets; all
- * synthesized via Web Audio, SSR-safe, started only from a user gesture.
+ * Background ambience — a soft, generative pad with a gentle bell melody on
+ * top. Several bright, major-key "moods" rotate one per session so it stays
+ * fresh; each wanders an eight-chord progression (long enough not to feel
+ * loopy) with a soft volume swell and a touch of filter movement so it
+ * breathes. A sparse, warm "twinkle" line picks notes out of the current
+ * chord so the music feels playful and tuneful, not like a drone. No audio
+ * assets; all synthesized via Web Audio, SSR-safe, started from a user gesture.
  *
  * iOS Safari needs extra care to make a synth-only graph audible:
  *  - a 1-sample silent buffer must be played *inside* the unlocking gesture,
@@ -16,70 +18,112 @@ import { readJSON, writeJSON } from '$lib/storage/storage';
 
 type Ctor = typeof AudioContext;
 
+// Equal-temperament note → frequency, so chords can be written by name. Sharps
+// only (no flats) keeps the parser tiny; e.g. 'A#3' rather than 'Bb3'.
+const SEMITONES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+function hz(note: string): number {
+	const m = /^([A-G]#?)(\d)$/.exec(note);
+	if (!m) return 440;
+	const midi = (Number(m[2]) + 1) * 12 + SEMITONES.indexOf(m[1]);
+	return 440 * Math.pow(2, (midi - 69) / 12);
+}
+const ch = (...names: string[]): number[] => names.map(hz);
+
 interface Mood {
 	readonly name: string;
 	readonly wave: OscillatorType;
-	/** Open, consonant four-note voicings (Hz) the pad wanders through. */
+	/** Open, consonant four-note voicings the pad wanders through. */
 	readonly chords: number[][];
 	readonly chordMs: number;
+	readonly glideMs: number; // portamento between chords (ms)
 	readonly cutoff: number; // lowpass base (higher = more open/airy)
 	readonly detune: number; // cents of chorus spread (small = less wavering)
 	readonly swellRate: number; // Hz of the volume LFO
 	readonly swellDepth: number; // fraction of base gain
 	readonly sweepDepth: number; // Hz of slow filter movement (0 = still)
+	readonly twinkleMs: number; // cadence of the bell melody (0 = none)
+	readonly twinkleGain: number; // peak bell level at the filter input
 }
 
-// Warm, major-leaning, openly voiced moods — gentle and collected, not eerie.
+// Bright, major-key, openly voiced moods — warm and cheerful, never eerie.
 const MOODS: Mood[] = [
 	{
-		name: 'Meadow',
+		// C major, classic happy pop motion (I–V–vi–IV …)
+		name: 'Sunbeam',
 		wave: 'triangle',
 		chords: [
-			[130.81, 196.0, 329.63, 493.88], // C  (C-G-E-B) maj7, open
-			[174.61, 261.63, 349.23, 523.25], // F  (F-C-F-C)
-			[196.0, 293.66, 392.0, 587.33], // G  (G-D-G-D)
-			[164.81, 246.94, 329.63, 493.88] // Em (E-B-E-B)
+			ch('C4', 'E4', 'G4', 'D5'), // Cadd9
+			ch('G3', 'B3', 'D4', 'G4'), // G
+			ch('A3', 'E4', 'G4', 'C5'), // Am7
+			ch('F3', 'A3', 'C4', 'E4'), // Fmaj7
+			ch('C4', 'E4', 'G4', 'C5'), // C
+			ch('G3', 'B3', 'D4', 'D5'), // G
+			ch('F3', 'A3', 'C4', 'F4'), // F
+			ch('G3', 'B3', 'D4', 'F4') // G7
 		],
-		chordMs: 18000,
-		cutoff: 1500,
-		detune: 2,
-		swellRate: 0.04,
-		swellDepth: 0.16,
-		sweepDepth: 140
+		chordMs: 11000,
+		glideMs: 2600,
+		cutoff: 2600,
+		detune: 1.5,
+		swellRate: 0.05,
+		swellDepth: 0.12,
+		sweepDepth: 160,
+		twinkleMs: 2400,
+		twinkleGain: 0.15
 	},
 	{
-		name: 'Hearth',
+		// F major, soft and dreamy with maj7 colour
+		name: 'Lagoon',
 		wave: 'sine',
 		chords: [
-			[87.31, 130.81, 174.61, 261.63], // F  low + warm
-			[110.0, 164.81, 220.0, 329.63], // Am
-			[98.0, 146.83, 196.0, 293.66], // G
-			[130.81, 196.0, 261.63, 392.0] // C
+			ch('F3', 'A3', 'C4', 'E4'), // Fmaj7
+			ch('G3', 'C4', 'E4', 'G4'), // C
+			ch('D3', 'A3', 'C4', 'F4'), // Dm7
+			ch('A#3', 'D4', 'F4', 'A4'), // A#(Bb)maj7
+			ch('F3', 'A3', 'C4', 'F4'), // F
+			ch('G3', 'C4', 'E4', 'G4'), // C
+			ch('G3', 'A#3', 'D4', 'F4'), // Gm7
+			ch('G3', 'C4', 'E4', 'A4') // C add
 		],
-		chordMs: 20000,
-		cutoff: 1200,
-		detune: 0,
-		swellRate: 0.03,
-		swellDepth: 0.14,
-		sweepDepth: 90
+		chordMs: 12500,
+		glideMs: 3200,
+		cutoff: 2200,
+		detune: 1,
+		swellRate: 0.04,
+		swellDepth: 0.11,
+		sweepDepth: 110,
+		twinkleMs: 3000,
+		twinkleGain: 0.13
 	},
 	{
-		name: 'Dusk',
+		// D major, brighter and a touch playful
+		name: 'Carousel',
 		wave: 'triangle',
 		chords: [
-			[146.83, 220.0, 293.66, 440.0], // D  open fifths
-			[196.0, 293.66, 392.0, 587.33], // G
-			[164.81, 246.94, 329.63, 493.88], // Em7
-			[110.0, 164.81, 220.0, 329.63] // A→Am, resolve down
+			ch('D4', 'F#4', 'A4', 'D5'), // D
+			ch('A3', 'C#4', 'E4', 'A4'), // A
+			ch('B3', 'D4', 'F#4', 'A4'), // Bm7
+			ch('G3', 'B3', 'D4', 'G4'), // G
+			ch('D4', 'F#4', 'A4', 'D5'), // D
+			ch('A3', 'C#4', 'E4', 'A4'), // A
+			ch('G3', 'B3', 'D4', 'G4'), // G
+			ch('A3', 'C#4', 'E4', 'G4') // A7
 		],
-		chordMs: 16000,
-		cutoff: 1400,
-		detune: 3,
-		swellRate: 0.05,
-		swellDepth: 0.18,
-		sweepDepth: 120
+		chordMs: 10000,
+		glideMs: 2200,
+		cutoff: 2800,
+		detune: 2,
+		swellRate: 0.06,
+		swellDepth: 0.13,
+		sweepDepth: 150,
+		twinkleMs: 2000,
+		twinkleGain: 0.16
 	}
 ];
+
+// Gentle melodic contour: indices into the (four-note) current chord. Steps up
+// and back down so the bell line arcs rather than wandering randomly.
+const TWINKLE_CONTOUR = [0, 1, 2, 3, 2, 1, 2, 0, 1, 3, 2, 1];
 
 /** Build a short silent WAV as an object URL (lazily, browser only). */
 function silentWavUrl(): string {
@@ -114,6 +158,8 @@ class Ambience {
 	private voices: OscillatorNode[] = [];
 	private lfos: OscillatorNode[] = [];
 	private timer: ReturnType<typeof setInterval> | null = null;
+	private twinkleTimer: ReturnType<typeof setInterval> | null = null;
+	private twinkleStep = 0;
 	private chordIdx = 0;
 	private volume = 0.5;
 	private running = false;
@@ -257,6 +303,12 @@ class Ambience {
 
 		this.chordIdx = 0;
 		this.timer = setInterval(() => this.nextChord(), mood.chordMs);
+
+		if (mood.twinkleMs > 0) {
+			this.twinkleStep = 0;
+			// a short delay so the first bell lands after the pad has eased in
+			this.twinkleTimer = setInterval(() => this.twinkle(), mood.twinkleMs);
+		}
 	}
 
 	private nextChord(): void {
@@ -265,11 +317,37 @@ class Ambience {
 		this.chordIdx = (this.chordIdx + 1) % this.mood.chords.length;
 		const chord = this.mood.chords[this.chordIdx];
 		const t = ac.currentTime;
+		const glide = this.mood.glideMs / 1000;
 		this.voices.forEach((osc, i) => {
 			const target = chord[i % chord.length];
-			// long glide between chords keeps it calm and collected
-			osc.frequency.exponentialRampToValueAtTime(Math.max(1, target), t + 6);
+			// a moderate glide settles each chord so the harmony stays defined
+			osc.frequency.exponentialRampToValueAtTime(Math.max(1, target), t + glide);
 		});
+	}
+
+	/** Pluck one warm bell note from the current chord (one octave up). */
+	private twinkle(): void {
+		const ac = this.ctx;
+		if (!ac || !this.running || !this.mood || !this.filter) return;
+		const chord = this.mood.chords[this.chordIdx];
+		const idx = TWINKLE_CONTOUR[this.twinkleStep % TWINKLE_CONTOUR.length];
+		this.twinkleStep++;
+		// octave up for sparkle; every so often two octaves for a brighter ping
+		const octave = this.twinkleStep % 8 === 0 ? 4 : 2;
+		const freq = chord[idx % chord.length] * octave;
+
+		const t = ac.currentTime;
+		const osc = ac.createOscillator();
+		osc.type = 'sine';
+		osc.frequency.value = freq;
+		const g = ac.createGain();
+		const peak = Math.max(0.0002, this.mood.twinkleGain);
+		g.gain.setValueAtTime(0.0001, t);
+		g.gain.exponentialRampToValueAtTime(peak, t + 0.03); // quick, soft attack
+		g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6); // bell-like decay
+		osc.connect(g).connect(this.filter);
+		osc.start(t);
+		osc.stop(t + 1.7);
 	}
 
 	stop(): void {
@@ -278,6 +356,8 @@ class Ambience {
 		const ac = this.ctx;
 		if (this.timer !== null) clearInterval(this.timer);
 		this.timer = null;
+		if (this.twinkleTimer !== null) clearInterval(this.twinkleTimer);
+		this.twinkleTimer = null;
 		if (this.silentEl) this.silentEl.pause();
 		if (ac && this.master) {
 			const t = ac.currentTime;

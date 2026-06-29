@@ -9,6 +9,7 @@
 	import { pickQuote, type Quote } from '$lib/quotes';
 	import CardView from '$lib/render/CardView.svelte';
 	import GameIcon from '$lib/render/GameIcon.svelte';
+	import Icon from '$lib/render/Icon.svelte';
 	import StatsSheet from '$lib/render/StatsSheet.svelte';
 	import { ambience } from '$lib/render/music';
 	import { FACES } from '$lib/theme/faces';
@@ -91,7 +92,7 @@
 <main class="home">
 	<div class="top-actions">
 		<button class="round" onclick={() => (showStats = true)} aria-label="Stats" title="Your stats">
-			📊
+			<Icon name="stats" size={22} />
 		</button>
 		<button
 			class="round"
@@ -99,7 +100,7 @@
 			aria-label="Settings"
 			title="Settings"
 		>
-			⚙
+			<Icon name="settings" size={22} />
 		</button>
 	</div>
 	<div class="shell">
@@ -138,9 +139,13 @@
 		{/if}
 
 		<div class="quick">
-			<button class="qbtn" onclick={randomGame}>🎲 Random game</button>
+			<button class="qbtn" onclick={randomGame}>
+				<Icon name="dice" size={18} />Random game
+			</button>
 			{#if lastGame}
-				<a class="qbtn" href={resolve(`/play/${lastGame.id}`)}>↩ Continue {lastGame.name}</a>
+				<a class="qbtn" href={resolve(`/play/${lastGame.id}`)}>
+					<Icon name="continue" size={16} />Continue {lastGame.name}
+				</a>
 			{/if}
 		</div>
 
@@ -621,6 +626,9 @@
 		margin-bottom: 0.5rem;
 	}
 	.qbtn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 		font-family: inherit;
 		font-size: 0.88rem;
 		font-weight: 700;
@@ -632,6 +640,9 @@
 		cursor: pointer;
 		text-decoration: none;
 		transition: background 0.15s var(--ease-out);
+	}
+	.qbtn :global(.ui-icon) {
+		color: var(--drop-ring);
 	}
 	.qbtn:hover {
 		background: var(--ui-surface-hover);

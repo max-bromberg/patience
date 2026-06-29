@@ -145,29 +145,36 @@ continue, and a card-quote header; **local stats** + Stats sheet; **win-streak
 toast**; **keyboard shortcuts** (N/U); best-time/moves records; **refined felt
 texture**; **SEO** (OG/Twitter/JSON-LD/sitemap/robots); **card-back leak fix**;
 **desktop sizing pass** (trick tables scale up, solitaire cap lowered, mobile
-unchanged); **iOS Safari music fix**; **warmer multi-mood music, default on**;
-**daily-challenge card recolors with the theme**.
+unchanged); **iOS Safari music fix**; **daily-challenge card recolors with the
+theme**; **UI icon set** (see below); **bright, tuneful music overhaul** (see below).
 
-## Pending / next up (was mid-stream when handing off)
+- **UI button redesign (DONE).** All chrome buttons now use a reusable
+  `src/lib/render/Icon.svelte` — inline SVG drawn with `currentColor`, so each
+  icon inherits the button's themed `color` (`--ui-text`, `--drop-ring`, …) and
+  recolors automatically with any theme / custom palette. Glyphs are card-themed
+  where it reads well (`deal` = two shuffling cards, `dice` for random,
+  `continue` = play). Wired into the play top bar (`back/undo/deal/sound-on/
+  sound-off/help/auto`) and the home top-right (`stats/settings`) + quick actions
+  (`dice/continue`). Tap targets kept ≥ 2.3rem and the existing `aria-label`s
+  preserved. Verified at 390px and 1366px.
+- **Music overhaul (DONE).** `src/lib/render/music.ts` was rewritten from the old
+  low/minor "moods" (which read as brooding/eerie) to three bright **major-key**
+  moods (Sunbeam C, Lagoon F, Dusk→**Carousel** D), each an **8-chord** voicing
+  in a higher register with a shorter glide so chords stay defined, a higher
+  filter cutoff for air, and a **sparse bell "twinkle" melody** that plucks notes
+  from the current chord so it feels playful and tuneful, not a drone. Chords are
+  written by note name via a small `hz()` helper. Default-on / gesture-gated /
+  iOS plumbing all unchanged.
 
-1. **UI button redesign (NOT STARTED — the main pending feature).** The user
-   wants all UI buttons reworked from text/emoji glyphs to **real SVG / graphical
-   icons** that are **card-themed** and **recolor with the theme customization**
-   (use theme CSS vars like `--drop-ring`, `--ui-text`, `--back-1`, etc.).
-   Targets: the play screen top bar (`src/routes/play/[gameId]/+page.svelte` —
-   currently the `.tool` buttons use unicode glyphs `‹ ↩ 🔀 🔊 ? ⏩`), the home
-   top-right `📊`/`⚙` buttons and the `🎲`/`↩` quick-action buttons
-   (`src/routes/+page.svelte`), and modal/sheet buttons. Consider a small
-   reusable `Icon.svelte` (inline SVG, `currentColor` + theme vars) and a
-   card-suit visual motif. Keep mobile tap targets ≥ ~2.3rem and accessible
-   `aria-label`s (already present — preserve them).
-2. **Verify visually (couldn't this session due to the image-review rejections):**
-   - The **daily-challenge recolor** across a few themes (blossom/ocean/custom)
-     and light themes — confirm contrast/legibility. Code is committed; just needs
-     an eyeball. (color-mix is used; supported in current Safari/Chrome.)
-   - The **warmer music** character on a real device / with audio (headless can't
-     audition). Confirm it reads as warm/open, not eerie, and that the
-     per-session mood rotation works (Meadow → Hearth → Dusk).
+## Pending / next up
+
+1. **Audition the new music on a real device / with audio** (headless can't play
+   sound). Confirm it reads as warm/bright/fun, the bell twinkle sits gently
+   under the pad, and the per-session mood rotation works (Sunbeam → Lagoon →
+   Carousel). Tune `twinkleGain` / `chordMs` / `cutoff` per mood if needed.
+2. **Verify the daily-challenge recolor** across a few themes (blossom/ocean/
+   custom) and light themes — confirm contrast/legibility. (color-mix is used;
+   supported in current Safari/Chrome.)
 3. **Optional polish ideas raised earlier (not requested yet):** "personal best!"
    flourish in the win toast when a win beats the stored fastest time / fewest
    moves; more AI games on the 52-card framework (Pitch, Knockout Whist); a
