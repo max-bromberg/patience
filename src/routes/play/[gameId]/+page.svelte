@@ -9,6 +9,7 @@
 	import ShareButton from '$lib/render/ShareButton.svelte';
 	import { buildShareText, SITE } from '$lib/share';
 	import { sfx } from '$lib/render/sound';
+	import { achievements } from '$lib/storage/achievements.svelte';
 	import { daily } from '$lib/storage/daily.svelte';
 	import { clearProgress, loadProgress, saveProgress } from '$lib/storage/resume';
 	import { settings } from '$lib/storage/settings.svelte';
@@ -125,12 +126,20 @@
 					moves: controller.moveCount,
 					timeMs: solTimeMs
 				});
+				achievements.recordResult({
+					gameId,
+					family: meta?.family ?? '',
+					won: true,
+					moves: controller.moveCount,
+					timeMs: solTimeMs
+				});
 				solRecorded = true;
 				celebrate(gameId);
 			}
 		} else if (controller.stuck) {
 			if (!solRecorded) {
 				stats.record(gameId, false);
+				achievements.recordResult({ gameId, family: meta?.family ?? '', won: false });
 				solRecorded = true;
 			}
 		} else solRecorded = false;
@@ -142,6 +151,7 @@
 			if (!euchreRecorded) {
 				const win = euchre.state.winner === 0;
 				stats.record(gameId, win);
+				achievements.recordResult({ gameId, family: meta?.family ?? '', won: win });
 				euchreRecorded = true;
 				if (win) celebrate(gameId);
 			}
@@ -155,6 +165,7 @@
 			if (!aiRecorded) {
 				const win = v.winnerLabel?.startsWith('You') ?? false;
 				stats.record(gameId, win);
+				achievements.recordResult({ gameId, family: meta?.family ?? '', won: win });
 				aiRecorded = true;
 				if (win) celebrate(gameId);
 			}
@@ -171,6 +182,7 @@
 			if (isDaily && controller && controller.seed === urlSeed) {
 				const now = new Date();
 				daily.complete(dateKey(now), previousKey(now));
+				achievements.refresh(); // daily streak may have hit a badge threshold
 			}
 		} else if (!won) {
 			celebrated = false;

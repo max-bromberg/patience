@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { ACHIEVEMENTS, ACHIEVEMENT_COUNT } from '$lib/achievements/catalog';
 	import { catalog } from '$lib/games/registry';
 	import GameIcon from '$lib/render/GameIcon.svelte';
+	import { achievements } from '$lib/storage/achievements.svelte';
 	import { stats } from '$lib/storage/stats.svelte';
 
 	let { onClose }: { onClose: () => void } = $props();
@@ -70,12 +72,32 @@
 					{/each}
 				</ul>
 			{/if}
+
+			<section class="achievements">
+				<div class="ach-head">
+					<h3>Achievements</h3>
+					<span class="ach-count">{achievements.earnedCount} of {ACHIEVEMENT_COUNT}</span>
+				</div>
+				<ul class="badges">
+					{#each ACHIEVEMENTS as a (a.id)}
+						{@const earned = achievements.has(a.id)}
+						<li class="badge" class:earned title={a.description}>
+							<span class="b-emoji">{earned ? a.emoji : '🔒'}</span>
+							<span class="b-name">{a.name}</span>
+							<span class="b-desc">{a.description}</span>
+						</li>
+					{/each}
+				</ul>
+			</section>
 		</div>
 
 		<div class="sheet-actions">
 			{#if stats.hasPlays}
 				{#if confirmReset}
-					<button class="btn danger" onclick={() => (stats.reset(), (confirmReset = false))}>
+					<button
+						class="btn danger"
+						onclick={() => (stats.reset(), achievements.reset(), (confirmReset = false))}
+					>
 						Confirm reset
 					</button>
 					<button class="btn ghost" onclick={() => (confirmReset = false)}>Cancel</button>
@@ -203,6 +225,69 @@
 		font-size: 0.85rem;
 		font-weight: 800;
 		white-space: nowrap;
+	}
+
+	.achievements {
+		display: grid;
+		gap: 0.55rem;
+	}
+	.ach-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+	.ach-head h3 {
+		margin: 0;
+		font-size: 0.95rem;
+	}
+	.ach-count {
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0.03em;
+		color: #8a8a90;
+	}
+	.badges {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+		gap: 0.4rem;
+	}
+	.badge {
+		display: grid;
+		justify-items: center;
+		gap: 0.15rem;
+		text-align: center;
+		padding: 0.6rem 0.35rem 0.5rem;
+		border-radius: 0.7rem;
+		background: rgba(0, 0, 0, 0.04);
+		opacity: 0.55;
+	}
+	.badge.earned {
+		opacity: 1;
+		background: rgba(240, 185, 63, 0.14);
+		box-shadow: inset 0 0 0 1px rgba(240, 185, 63, 0.4);
+	}
+	.b-emoji {
+		font-size: 1.5rem;
+		line-height: 1.1;
+	}
+	.badge:not(.earned) .b-emoji {
+		font-size: 1.15rem;
+		filter: grayscale(1);
+		opacity: 0.7;
+	}
+	.b-name {
+		font-size: 0.72rem;
+		font-weight: 800;
+		line-height: 1.1;
+	}
+	.b-desc {
+		font-size: 0.64rem;
+		line-height: 1.2;
+		color: #7a7a82;
 	}
 
 	.sheet-actions {

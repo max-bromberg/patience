@@ -24,6 +24,21 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
 	{
+		version: '1.2.0',
+		date: '2026-07-04',
+		title: 'Achievements',
+		changes: [
+			{
+				kind: 'added',
+				text: 'Earn cozy badges as you play — first win, win streaks, night-owl sessions, winning a game in every category, and more. Unlocking one gives a little celebration.'
+			},
+			{
+				kind: 'added',
+				text: 'A badge gallery in your Stats sheet tracks everything you’ve earned and what’s left to unlock.'
+			}
+		]
+	},
+	{
 		version: '1.1.0',
 		date: '2026-07-04',
 		title: 'Install & play offline',

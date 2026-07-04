@@ -6,7 +6,9 @@
 	import '$lib/theme/faces.css';
 	import VibeLayer from '$lib/render/VibeLayer.svelte';
 	import UpdateNotes from '$lib/render/UpdateNotes.svelte';
+	import AchievementPopup from '$lib/render/AchievementPopup.svelte';
 	import { ambience } from '$lib/render/music';
+	import { achievements } from '$lib/storage/achievements.svelte';
 	import { shade } from '$lib/theme/color';
 	import { isLightTheme } from '$lib/theme/themes';
 	import { settings } from '$lib/storage/settings.svelte';
@@ -23,6 +25,10 @@
 		if (!settings.music) ambience.stop();
 	});
 	onMount(() => {
+		// Grant any already-earned badges silently so a returning player isn't
+		// greeted by a stack of popups for progress made before this shipped.
+		achievements.reconcile();
+
 		const kick = () => {
 			if (settings.music) ambience.start();
 		};
@@ -80,3 +86,4 @@
 <VibeLayer />
 {@render children()}
 <UpdateNotes />
+<AchievementPopup />

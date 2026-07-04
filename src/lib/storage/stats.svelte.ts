@@ -67,6 +67,27 @@ class StatsStore {
 		return this.totals.played > 0;
 	}
 
+	/** Ids of games won at least once. */
+	get wonGameIds(): string[] {
+		return Object.entries(this.#data.games)
+			.filter(([, g]) => g.won > 0)
+			.map(([id]) => id);
+	}
+
+	/** Ids of games played at least once. */
+	get playedGameIds(): string[] {
+		return Object.entries(this.#data.games)
+			.filter(([, g]) => g.played > 0)
+			.map(([id]) => id);
+	}
+
+	/** Best win streak reached in any single game. */
+	get bestStreak(): number {
+		let best = 0;
+		for (const g of Object.values(this.#data.games)) best = Math.max(best, g.best);
+		return best;
+	}
+
 	/**
 	 * Record a finished game. `won` extends/breaks the win streak. On a win,
 	 * `metrics` updates the fastest-time / fewest-moves records (lower is better).
