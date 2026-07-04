@@ -32,3 +32,19 @@ textarea,
 	-webkit-user-select: text;
 	user-select: text;
 }
+
+/*
+ * Native-app scrolling: no visible scrollbars anywhere (content still scrolls
+ * with momentum). Native apps and installed PWAs don't show scrollbar chrome;
+ * this hides it across the app (page and every inner scroll area) on all
+ * engines while leaving scrolling fully functional.
+ */
+* {
+	scrollbar-width: none; /* Firefox */
+	-ms-overflow-style: none; /* old Edge */
+}
+*::-webkit-scrollbar {
+	width: 0;
+	height: 0;
+	display: none; /* WebKit/Blink */
+}

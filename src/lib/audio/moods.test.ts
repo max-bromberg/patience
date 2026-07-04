@@ -11,8 +11,15 @@ describe('mood registry', () => {
 		expect(MOOD_IDS.size).toBe(MOODS.length);
 	});
 
-	it('every mood has four notes per chord', () => {
-		for (const m of MOODS) for (const chord of m.chords) expect(chord.length).toBe(4);
+	it('every track is well-formed', () => {
+		for (const m of MOODS) {
+			expect(m.parts.length, m.id).toBeGreaterThan(0);
+			expect(m.progression.length, m.id).toBeGreaterThan(0);
+			expect(m.scale.length, m.id).toBeGreaterThan(0);
+			expect(m.stepMs, m.id).toBeGreaterThan(0);
+			expect(m.stepsPerBar, m.id).toBeGreaterThan(0);
+			for (const p of m.parts) expect(p.pattern.length, `${m.id}/${p.role}`).toBeGreaterThan(0);
+		}
 	});
 
 	it('the lobby mood exists', () => {

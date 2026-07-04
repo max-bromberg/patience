@@ -1,361 +1,565 @@
 /**
- * Ambient "moods" — the palette the music-box engine (render/music.ts) draws
- * from. Each mood is a small set of consonant chord voicings plus timbre and
- * feel parameters; the engine arpeggiates the current chord into soft bell
- * tones. All synthesized, no assets.
+ * Ambient tracks — the material the sequencer (render/music.ts) plays. Unlike a
+ * single arpeggiator, each track is its own little arrangement: a chord
+ * progression in some key/scale, plus a handful of voices (bass, pad, a real
+ * melodic lead, arps, sparkles, soft percussion) each with their own rhythm and
+ * timbre. That's what makes them read as distinct tunes rather than the same
+ * pattern re-keyed. All synthesized, no assets.
  *
- * Moods are chosen to fit each game's vibe (see GAME_MOOD), and the engine also
- * adapts a mood in real time to how you're doing (brighter/livelier as you close
- * in on a win, quieter and more pensive when you're stuck). A handful of bonus
- * moods are unlocked by achievements and can be picked in Settings.
+ * Tracks are chosen to fit each game's vibe (GAME_MOOD), the engine adapts them
+ * in real time to how you're doing, and a few are unlocked by achievements.
  */
 
-// Equal-temperament note → frequency, so chords read by name. Sharps only.
-const SEMITONES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-function hz(note: string): number {
-	const m = /^([A-G]#?)(\d)$/.exec(note);
+// Note name → frequency (equal temperament). Sharps only.
+const SEMI = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+export function hz(note: string): number {
+	const m = /^([A-G]#?)(-?\d)$/.exec(note);
 	if (!m) return 440;
-	const midi = (Number(m[2]) + 1) * 12 + SEMITONES.indexOf(m[1]);
+	const midi = (Number(m[2]) + 1) * 12 + SEMI.indexOf(m[1]);
 	return 440 * Math.pow(2, (midi - 69) / 12);
 }
-/** Build a chord (array of frequencies) from note names. */
-const ch = (...names: string[]): number[] => names.map(hz);
+
+// Scales as semitone offsets from the tonic.
+export const SCALES = {
+	major: [0, 2, 4, 5, 7, 9, 11],
+	minor: [0, 2, 3, 5, 7, 8, 10],
+	harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
+	dorian: [0, 2, 3, 5, 7, 9, 10],
+	mixolydian: [0, 2, 4, 5, 7, 9, 10],
+	lydian: [0, 2, 4, 6, 7, 9, 11],
+	phrygianDom: [0, 1, 4, 5, 7, 8, 10],
+	pentatonic: [0, 2, 4, 7, 9]
+} as const;
+
+/** One step in a part's pattern: a note index, a chord of them, or a rest. */
+export type Cell = number | number[] | null;
+
+export interface Voice {
+	wave: OscillatorType;
+	gain: number;
+	attack: number; // seconds
+	release: number; // seconds (pluck tail, or fade after the note ends)
+	/** Hold the note until the part's next hit (pads/leads) instead of plucking. */
+	sustain?: boolean;
+	/** Octave shift applied to every note. */
+	octave?: number;
+	/** A detuned second oscillator (cents) for width/chorus. */
+	detune?: number;
+	/** Added octave-up partial level for shimmer. */
+	partial?: number;
+}
+
+/** How a part's cell numbers are read. */
+export type NoteMode = 'chord' | 'scale' | 'perc';
+
+export interface Part {
+	role: string;
+	mode: NoteMode;
+	voice: Voice;
+	/** Steps, indexed by globalStep % pattern.length (so it can span bars). */
+	pattern: Cell[];
+}
 
 export interface Mood {
 	readonly id: string;
 	readonly name: string;
 	readonly description: string;
-	/** Four-note voicings the arpeggio draws its notes from. */
-	readonly chords: number[][];
-	readonly stepMs: number; // time between arpeggio notes (tempo/feel)
-	readonly stepsPerChord: number; // notes before moving to the next chord
-	readonly cutoff: number; // lowpass base (higher = brighter/airier)
-	readonly arpGain: number; // peak level of each bell pluck
-	readonly padGain: number; // level of the soft octave pad bed (0 = none)
+	readonly root: string; // tonic pitch for scale-degree 0 (e.g. 'C4')
+	readonly scale: readonly number[];
+	readonly progression: readonly number[]; // chord-root scale degrees, one per bar
+	readonly stepMs: number;
+	readonly stepsPerBar: number;
+	readonly parts: readonly Part[];
+	readonly cutoff: number; // master lowpass base (brightness)
 	readonly delayTime: number; // echo spacing (s)
-	readonly feedback: number; // echo feedback amount (0–0.5)
-	readonly wave: OscillatorType; // pluck fundamental timbre
-	readonly partial: number; // octave-partial level (brightness/shimmer)
-	/** Melodic contour: indices into the two-octave chord pool; -1 = rest. */
-	readonly arp: readonly number[];
-	/** Achievement id that unlocks this mood; undefined = always available. */
-	readonly unlock?: string;
+	readonly feedback: number; // echo feedback 0–0.5
+	readonly unlock?: string; // achievement id, if locked
 }
 
-// A few melodic contours give the moods rhythmic identity. Lengths coprime with
-// the chord step counts so the figure evolves across the loop.
-const FLOW = [0, 2, 4, 7, 5, 3, -1]; // gentle music-box
-const RISE = [0, 2, 4, 5, 7, 6, 4, 2]; // busier, climbing
-const SPARSE = [0, 4, -1, 7, -1, 2, -1]; // airy, lots of space
-const ROCK = [0, 3, 5, 3, 7, 5, -1, 2]; // jauntier, folk
+/** Build a step pattern from a sparse {step: cell} map. */
+function seq(len: number, hits: Record<number, Cell>): Cell[] {
+	const a: Cell[] = new Array(len).fill(null);
+	for (const k in hits) a[+k] = hits[k];
+	return a;
+}
+
+// Reusable voice presets (tweaked per track).
+const musicBox = (o: Partial<Voice> = {}): Voice => ({
+	wave: 'sine',
+	gain: 0.09,
+	attack: 0.005,
+	release: 1.3,
+	partial: 0.35,
+	...o
+});
+const bass = (o: Partial<Voice> = {}): Voice => ({
+	wave: 'triangle',
+	gain: 0.11,
+	attack: 0.008,
+	release: 0.5,
+	octave: -2,
+	...o
+});
+const pad = (o: Partial<Voice> = {}): Voice => ({
+	wave: 'triangle',
+	gain: 0.05,
+	attack: 0.5,
+	release: 1.1,
+	sustain: true,
+	detune: 6,
+	...o
+});
+const lead = (o: Partial<Voice> = {}): Voice => ({
+	wave: 'sine',
+	gain: 0.085,
+	attack: 0.03,
+	release: 0.5,
+	sustain: true,
+	...o
+});
+const pluck = (o: Partial<Voice> = {}): Voice => ({
+	wave: 'triangle',
+	gain: 0.07,
+	attack: 0.003,
+	release: 0.32,
+	...o
+});
+const glass = (o: Partial<Voice> = {}): Voice => ({
+	wave: 'sine',
+	gain: 0.055,
+	attack: 0.003,
+	release: 1.7,
+	partial: 0.5,
+	...o
+});
+const perc = (o: Partial<Voice> = {}): Voice => ({
+	wave: 'sine', // ignored for perc mode; a noise hit is used
+	gain: 0.05,
+	attack: 0.001,
+	release: 0.09,
+	...o
+});
 
 export const MOODS: readonly Mood[] = [
-	// ---- always-available game vibes -------------------------------------
+	// ── Sunbeam · Klondike — a bright music-box waltz (3/4) ───────────────
 	{
 		id: 'sunbeam',
 		name: 'Sunbeam',
-		description: 'Warm and sunny — the classic Klondike feel.',
-		chords: [
-			ch('C4', 'E4', 'G4', 'C5'),
-			ch('G3', 'B3', 'D4', 'G4'),
-			ch('A3', 'C4', 'E4', 'A4'),
-			ch('F3', 'A3', 'C4', 'F4'),
-			ch('C4', 'E4', 'G4', 'C5'),
-			ch('G3', 'B3', 'D4', 'G4'),
-			ch('F3', 'A3', 'C4', 'F4'),
-			ch('G3', 'B3', 'D4', 'G4')
-		],
-		stepMs: 300,
-		stepsPerChord: 12,
+		description: 'A bright little music-box waltz. Warm and sunny.',
+		root: 'C4',
+		scale: SCALES.major,
+		progression: [0, 3, 4, 0, 5, 3, 4, 4], // I IV V I vi IV V V
+		stepMs: 200,
+		stepsPerBar: 12, // 3 beats × 4
 		cutoff: 3200,
-		arpGain: 0.1,
-		padGain: 0.05,
 		delayTime: 0.3,
-		feedback: 0.26,
-		wave: 'sine',
-		partial: 0.32,
-		arp: FLOW
+		feedback: 0.24,
+		parts: [
+			{ role: 'bass', mode: 'chord', voice: bass(), pattern: seq(12, { 0: 0, 4: 2, 8: 1 }) },
+			{
+				role: 'pad',
+				mode: 'chord',
+				voice: pad({ gain: 0.04 }),
+				pattern: seq(12, { 0: [0, 1, 2] })
+			},
+			{
+				role: 'lead',
+				mode: 'scale',
+				voice: musicBox(),
+				pattern: seq(24, { 0: 4, 4: 2, 8: 0, 12: 2, 16: 4, 20: 7, 22: 4 })
+			}
+		]
 	},
+	// ── Lagoon · FreeCell — ambient, near-beatless pad wash ───────────────
 	{
 		id: 'lagoon',
 		name: 'Lagoon',
-		description: 'Soft and dreamy — calm, unhurried thinking.',
-		chords: [
-			ch('F3', 'A3', 'C4', 'F4'),
-			ch('C4', 'E4', 'G4', 'C5'),
-			ch('D3', 'F3', 'A3', 'D4'),
-			ch('A#3', 'D4', 'F4', 'A#4'),
-			ch('F3', 'A3', 'C4', 'F4'),
-			ch('C4', 'E4', 'G4', 'C5'),
-			ch('D3', 'F3', 'A3', 'D4'),
-			ch('C4', 'E4', 'G4', 'C5')
-		],
-		stepMs: 360,
-		stepsPerChord: 12,
-		cutoff: 2700,
-		arpGain: 0.1,
-		padGain: 0.06,
-		delayTime: 0.36,
-		feedback: 0.3,
-		wave: 'sine',
-		partial: 0.28,
-		arp: SPARSE
+		description: 'A slow, dreamy wash of pads and far-off bells.',
+		root: 'F3',
+		scale: SCALES.major,
+		progression: [0, 4, 1, 3], // I V ii IV
+		stepMs: 300,
+		stepsPerBar: 16,
+		cutoff: 2500,
+		delayTime: 0.4,
+		feedback: 0.34,
+		parts: [
+			{
+				role: 'pad',
+				mode: 'chord',
+				voice: pad({ gain: 0.055, attack: 1.0, release: 2.0 }),
+				pattern: seq(16, { 0: [0, 1, 2, 4] })
+			},
+			{
+				role: 'sub',
+				mode: 'chord',
+				voice: bass({ gain: 0.06, attack: 0.4 }),
+				pattern: seq(16, { 0: 0 })
+			},
+			{
+				role: 'bell',
+				mode: 'scale',
+				voice: glass({ octave: 1, gain: 0.045 }),
+				pattern: seq(32, { 6: 4, 14: 6, 22: 7, 26: 4 })
+			}
+		]
 	},
+	// ── Carousel · TriPeaks — bouncy, playful, quick ──────────────────────
 	{
 		id: 'carousel',
 		name: 'Carousel',
-		description: 'Bright and playful — light, quick, and cheerful.',
-		chords: [
-			ch('D4', 'F#4', 'A4', 'D5'),
-			ch('A3', 'C#4', 'E4', 'A4'),
-			ch('B3', 'D4', 'F#4', 'B4'),
-			ch('G3', 'B3', 'D4', 'G4'),
-			ch('D4', 'F#4', 'A4', 'D5'),
-			ch('A3', 'C#4', 'E4', 'A4'),
-			ch('G3', 'B3', 'D4', 'G4'),
-			ch('A3', 'C#4', 'E4', 'A4')
-		],
-		stepMs: 280,
-		stepsPerChord: 16,
-		cutoff: 3400,
-		arpGain: 0.1,
-		padGain: 0.05,
+		description: 'Bouncy and playful — quick plucks and a skipping tune.',
+		root: 'D4',
+		scale: SCALES.major,
+		progression: [0, 4, 5, 3], // I V vi IV
+		stepMs: 150,
+		stepsPerBar: 16,
+		cutoff: 3500,
 		delayTime: 0.28,
-		feedback: 0.24,
-		wave: 'triangle',
-		partial: 0.34,
-		arp: RISE
+		feedback: 0.22,
+		parts: [
+			{
+				role: 'bass',
+				mode: 'chord',
+				voice: bass({ release: 0.28 }),
+				pattern: seq(16, { 0: 0, 4: 2, 8: 0, 12: 2 })
+			},
+			{
+				role: 'arp',
+				mode: 'chord',
+				voice: pluck(),
+				pattern: seq(16, { 0: 0, 2: 1, 4: 2, 6: 3, 8: 2, 10: 1, 12: 2, 14: 3 })
+			},
+			{
+				role: 'lead',
+				mode: 'scale',
+				voice: musicBox({ partial: 0.3, release: 0.7 }),
+				pattern: seq(32, { 2: 7, 6: 6, 10: 4, 14: 5, 18: 7, 22: 9, 26: 7, 28: 4 })
+			}
+		]
 	},
+	// ── Moonlit · Spider — a slow, brooding minor nocturne ────────────────
 	{
 		id: 'moonlit',
 		name: 'Moonlit',
-		description: 'Pensive and cool — for the long, tricky games.',
-		chords: [
-			ch('A3', 'C4', 'E4', 'A4'), // Am
-			ch('F3', 'A3', 'C4', 'F4'), // F
-			ch('C4', 'E4', 'G4', 'C5'), // C
-			ch('G3', 'B3', 'D4', 'G4'), // G
-			ch('A3', 'C4', 'E4', 'A4'), // Am
-			ch('D3', 'F3', 'A3', 'D4'), // Dm
-			ch('E3', 'G#3', 'B3', 'E4'), // E (raised leading tone)
-			ch('A3', 'C4', 'E4', 'A4') // Am
-		],
-		stepMs: 340,
-		stepsPerChord: 12,
-		cutoff: 2400,
-		arpGain: 0.1,
-		padGain: 0.07,
-		delayTime: 0.34,
-		feedback: 0.32,
-		wave: 'sine',
-		partial: 0.26,
-		arp: FLOW
+		description: 'A slow, brooding nocturne for the long, tricky games.',
+		root: 'A3',
+		scale: SCALES.minor,
+		progression: [0, 5, 2, 4], // i VI III v
+		stepMs: 280,
+		stepsPerBar: 16,
+		cutoff: 2200,
+		delayTime: 0.38,
+		feedback: 0.34,
+		parts: [
+			{
+				role: 'bass',
+				mode: 'chord',
+				voice: bass({ gain: 0.1, release: 1.2 }),
+				pattern: seq(16, { 0: 0, 10: 2 })
+			},
+			{
+				role: 'pad',
+				mode: 'chord',
+				voice: pad({ gain: 0.05, attack: 0.8 }),
+				pattern: seq(16, { 0: [0, 1, 2] })
+			},
+			{
+				role: 'lead',
+				mode: 'scale',
+				voice: lead({ wave: 'triangle', gain: 0.07, release: 0.9 }),
+				pattern: seq(32, { 0: 7, 6: 6, 12: 4, 16: 2, 20: 4, 24: 3, 30: 2 })
+			}
+		]
 	},
+	// ── Meadow · Golf — a breezy pentatonic folk lilt ─────────────────────
 	{
 		id: 'meadow',
 		name: 'Meadow',
-		description: 'Airy and breezy — a light pentatonic lilt.',
-		chords: [
-			ch('G3', 'B3', 'D4', 'G4'), // G
-			ch('E3', 'G3', 'B3', 'E4'), // Em
-			ch('C4', 'E4', 'G4', 'C5'), // C
-			ch('D4', 'F#4', 'A4', 'D5'), // D
-			ch('G3', 'B3', 'D4', 'G4'),
-			ch('C4', 'E4', 'G4', 'C5'),
-			ch('E3', 'G3', 'B3', 'E4'),
-			ch('D4', 'F#4', 'A4', 'D5')
-		],
-		stepMs: 250,
-		stepsPerChord: 12,
+		description: 'Breezy and open — a light pentatonic lilt.',
+		root: 'G3',
+		scale: SCALES.pentatonic,
+		progression: [0, 3, 1, 4],
+		stepMs: 170,
+		stepsPerBar: 16,
 		cutoff: 3600,
-		arpGain: 0.095,
-		padGain: 0.045,
-		delayTime: 0.25,
+		delayTime: 0.26,
 		feedback: 0.22,
-		wave: 'triangle',
-		partial: 0.3,
-		arp: RISE
+		parts: [
+			{
+				role: 'bass',
+				mode: 'chord',
+				voice: bass({ release: 0.5 }),
+				pattern: seq(16, { 0: 0, 8: 2 })
+			},
+			{
+				role: 'pluck',
+				mode: 'chord',
+				voice: pluck({ gain: 0.055 }),
+				pattern: seq(16, { 2: 1, 6: 2, 10: 1, 14: 3 })
+			},
+			{
+				role: 'lead',
+				mode: 'scale',
+				voice: lead({ wave: 'sine', gain: 0.08, attack: 0.02, release: 0.6 }),
+				pattern: seq(32, { 0: 2, 4: 4, 8: 5, 12: 4, 16: 7, 20: 5, 24: 4, 28: 2 })
+			}
+		]
 	},
+	// ── Tavern · Euchre — a jaunty jig (6/8 compound) ─────────────────────
 	{
 		id: 'tavern',
 		name: 'Tavern',
-		description: 'Jaunty and folksy — good company at the card table.',
-		chords: [
-			ch('D4', 'F#4', 'A4', 'D5'), // D
-			ch('C4', 'E4', 'G4', 'C5'), // C (bVII → mixolydian)
-			ch('G3', 'B3', 'D4', 'G4'), // G
-			ch('D4', 'F#4', 'A4', 'D5'),
-			ch('C4', 'E4', 'G4', 'C5'),
-			ch('G3', 'B3', 'D4', 'G4'),
-			ch('A3', 'C#4', 'E4', 'A4'), // A
-			ch('D4', 'F#4', 'A4', 'D5')
-		],
-		stepMs: 260,
-		stepsPerChord: 8,
-		cutoff: 3200,
-		arpGain: 0.1,
-		padGain: 0.05,
-		delayTime: 0.26,
-		feedback: 0.22,
-		wave: 'triangle',
-		partial: 0.36,
-		arp: ROCK
+		description: 'A jaunty folk jig — good company at the card table.',
+		root: 'D4',
+		scale: SCALES.mixolydian,
+		progression: [0, 6, 3, 4], // I bVII IV V (mixolydian colour)
+		stepMs: 145,
+		stepsPerBar: 12, // 2 dotted beats × 6
+		cutoff: 3300,
+		delayTime: 0.24,
+		feedback: 0.2,
+		parts: [
+			{
+				role: 'bass',
+				mode: 'chord',
+				voice: bass({ release: 0.3 }),
+				pattern: seq(12, { 0: 0, 6: 2 })
+			},
+			{
+				role: 'chords',
+				mode: 'chord',
+				voice: pluck({ gain: 0.05, release: 0.2 }),
+				pattern: seq(12, { 3: [0, 1, 2], 9: [0, 1, 2] })
+			},
+			{
+				role: 'lead',
+				mode: 'scale',
+				voice: lead({ wave: 'triangle', gain: 0.08, attack: 0.01, release: 0.35, sustain: false }),
+				pattern: seq(24, { 0: 4, 2: 5, 4: 6, 6: 7, 9: 6, 12: 4, 14: 2, 16: 4, 18: 6, 21: 4 })
+			}
+		]
 	},
+	// ── Sandstorm · Pyramid — exotic, hypnotic, with a shaker ─────────────
 	{
 		id: 'sandstorm',
 		name: 'Sandstorm',
-		description: 'Ancient and exotic — a harmonic-minor mystery.',
-		chords: [
-			ch('D3', 'F3', 'A3', 'D4'), // Dm
-			ch('G3', 'A#3', 'D4', 'G4'), // Gm
-			ch('A3', 'C#4', 'E4', 'A4'), // A (raised 3rd → exotic)
-			ch('D3', 'F3', 'A3', 'D4'),
-			ch('A#3', 'D4', 'F4', 'A#4'), // A#
-			ch('G3', 'A#3', 'D4', 'G4'),
-			ch('A3', 'C#4', 'E4', 'A4'),
-			ch('D3', 'F3', 'A3', 'D4')
-		],
-		stepMs: 320,
-		stepsPerChord: 10,
-		cutoff: 2500,
-		arpGain: 0.1,
-		padGain: 0.06,
+		description: 'Ancient and hypnotic — a snaking harmonic-minor spell.',
+		root: 'D4',
+		scale: SCALES.phrygianDom,
+		progression: [0, 0, 3, 0], // droning around the tonic
+		stepMs: 210,
+		stepsPerBar: 16,
+		cutoff: 2600,
 		delayTime: 0.33,
 		feedback: 0.3,
-		wave: 'sine',
-		partial: 0.4,
-		arp: FLOW
+		parts: [
+			{
+				role: 'drone',
+				mode: 'chord',
+				voice: bass({ gain: 0.1, attack: 0.3, release: 2.0 }),
+				pattern: seq(16, { 0: 0 })
+			},
+			{
+				role: 'shaker',
+				mode: 'perc',
+				voice: perc({ gain: 0.03 }),
+				pattern: seq(8, { 0: 1, 2: 0.5, 3: 1, 5: 0.6, 6: 1 })
+			},
+			{
+				role: 'lead',
+				mode: 'scale',
+				voice: lead({ wave: 'sine', gain: 0.075, attack: 0.015, release: 0.45, sustain: false }),
+				pattern: seq(32, {
+					0: 0,
+					3: 1,
+					6: 2,
+					8: 1,
+					11: 2,
+					14: 3,
+					16: 2,
+					19: 1,
+					22: 0,
+					26: 1,
+					29: 0
+				})
+			}
+		]
 	},
-	// ---- bonus moods, unlocked by achievements ---------------------------
+	// ── Nocturne · unlock: Night Owl — soft late-night jazz ───────────────
 	{
 		id: 'nocturne',
 		name: 'Nocturne',
-		description: 'Hushed and late-night. Unlocked by the Night Owl badge.',
-		chords: [
-			ch('E3', 'G3', 'B3', 'E4'), // Em
-			ch('A3', 'C4', 'E4', 'A4'), // Am
-			ch('B3', 'D#4', 'F#4', 'B4'), // B (raised 3rd)
-			ch('E3', 'G3', 'B3', 'E4'),
-			ch('C4', 'E4', 'G4', 'C5'), // C
-			ch('A3', 'C4', 'E4', 'A4'),
-			ch('B3', 'D#4', 'F#4', 'B4'),
-			ch('E3', 'G3', 'B3', 'E4')
-		],
-		stepMs: 400,
-		stepsPerChord: 12,
-		cutoff: 2100,
-		arpGain: 0.1,
-		padGain: 0.08,
-		delayTime: 0.42,
-		feedback: 0.36,
-		wave: 'sine',
-		partial: 0.22,
-		arp: SPARSE,
-		unlock: 'night-owl'
+		description: 'Hushed, late-night jazz. Unlocked by the Night Owl badge.',
+		root: 'E3',
+		scale: SCALES.dorian,
+		progression: [0, 3, 1, 4], // i IV ii v-ish (dorian)
+		stepMs: 250,
+		stepsPerBar: 16,
+		cutoff: 2400,
+		delayTime: 0.4,
+		feedback: 0.32,
+		unlock: 'night-owl',
+		parts: [
+			{
+				role: 'bass',
+				mode: 'chord',
+				voice: bass({ gain: 0.1, release: 0.9 }),
+				pattern: seq(16, { 0: 0, 6: 1, 10: 2 })
+			},
+			{
+				role: 'keys',
+				mode: 'chord',
+				voice: pad({ gain: 0.045, attack: 0.3, release: 0.9 }),
+				pattern: seq(16, { 2: [0, 1, 2, 3], 10: [0, 1, 2, 3] }) // 7th chords
+			},
+			{
+				role: 'lead',
+				mode: 'scale',
+				voice: lead({ wave: 'sine', gain: 0.07, attack: 0.04, release: 0.8 }),
+				pattern: seq(32, { 0: 4, 5: 5, 8: 4, 12: 2, 18: 3, 22: 4, 27: 2 })
+			}
+		]
 	},
+	// ── Sunrise · unlock: Early Bird — uplifting lydian build ─────────────
 	{
 		id: 'sunrise',
 		name: 'Sunrise',
-		description: 'Bright and hopeful. Unlocked by the Early Bird badge.',
-		chords: [
-			ch('D4', 'F#4', 'A4', 'D5'), // D
-			ch('E4', 'G#4', 'B4', 'E5'), // E (lydian II)
-			ch('A3', 'C#4', 'E4', 'A4'), // A
-			ch('D4', 'F#4', 'A4', 'D5'),
-			ch('G3', 'B3', 'D4', 'G4'), // G (with G# in melody = lydian)
-			ch('E4', 'G#4', 'B4', 'E5'),
-			ch('A3', 'C#4', 'E4', 'A4'),
-			ch('D4', 'F#4', 'A4', 'D5')
-		],
-		stepMs: 270,
-		stepsPerChord: 12,
+		description: 'Bright and rising, with a lydian glow. Unlocked by Early Bird.',
+		root: 'D4',
+		scale: SCALES.lydian,
+		progression: [0, 1, 4, 0], // I II V I (lydian II)
+		stepMs: 165,
+		stepsPerBar: 16,
 		cutoff: 3800,
-		arpGain: 0.095,
-		padGain: 0.05,
 		delayTime: 0.27,
-		feedback: 0.24,
-		wave: 'triangle',
-		partial: 0.34,
-		arp: RISE,
-		unlock: 'early-bird'
+		feedback: 0.26,
+		unlock: 'early-bird',
+		parts: [
+			{
+				role: 'bass',
+				mode: 'chord',
+				voice: bass({ release: 0.4 }),
+				pattern: seq(16, { 0: 0, 8: 0 })
+			},
+			{
+				role: 'arp',
+				mode: 'chord',
+				voice: pluck({ gain: 0.055, release: 0.4 }),
+				pattern: seq(16, { 0: 0, 2: 1, 4: 2, 6: 3, 8: 4, 10: 3, 12: 2, 14: 1 })
+			},
+			{
+				role: 'lead',
+				mode: 'scale',
+				voice: lead({ wave: 'triangle', gain: 0.08, release: 0.6 }),
+				pattern: seq(32, { 0: 2, 6: 4, 12: 6, 16: 7, 22: 9, 28: 7 })
+			}
+		]
 	},
+	// ── Triumph · unlock: Unstoppable — majestic and bold ─────────────────
 	{
 		id: 'triumph',
 		name: 'Triumph',
-		description: 'Warm and majestic. Unlocked by the Unstoppable badge.',
-		chords: [
-			ch('C4', 'E4', 'G4', 'C5'), // C
-			ch('F3', 'A3', 'C4', 'F4'), // F
-			ch('G3', 'B3', 'D4', 'G4'), // G
-			ch('C4', 'E4', 'G4', 'C5'),
-			ch('A3', 'C#4', 'E4', 'A4'), // A (secondary dominant lift)
-			ch('F3', 'A3', 'C4', 'F4'),
-			ch('G3', 'B3', 'D4', 'G4'),
-			ch('C4', 'E4', 'G4', 'C5')
-		],
-		stepMs: 260,
-		stepsPerChord: 8,
-		cutoff: 3600,
-		arpGain: 0.11,
-		padGain: 0.08,
+		description: 'Warm and majestic, with bold chords. Unlocked by Unstoppable.',
+		root: 'C4',
+		scale: SCALES.major,
+		progression: [0, 5, 3, 4], // I vi IV V
+		stepMs: 190,
+		stepsPerBar: 16,
+		cutoff: 3400,
 		delayTime: 0.26,
 		feedback: 0.24,
-		wave: 'triangle',
-		partial: 0.4,
-		arp: ROCK,
-		unlock: 'streak-5'
+		unlock: 'streak-5',
+		parts: [
+			{
+				role: 'bass',
+				mode: 'chord',
+				voice: bass({ gain: 0.12, release: 0.45 }),
+				pattern: seq(16, { 0: 0, 4: 0, 8: 2, 12: 2 })
+			},
+			{
+				role: 'stabs',
+				mode: 'chord',
+				voice: pluck({ wave: 'sawtooth', gain: 0.05, release: 0.35 }),
+				pattern: seq(16, { 0: [0, 1, 2], 6: [0, 1, 2], 8: [0, 1, 2], 12: [0, 1, 2] })
+			},
+			{
+				role: 'lead',
+				mode: 'scale',
+				voice: lead({ wave: 'triangle', gain: 0.09, attack: 0.02, release: 0.7 }),
+				pattern: seq(32, { 0: 4, 4: 7, 8: 4, 12: 9, 16: 7, 20: 4, 24: 5, 28: 7 })
+			}
+		]
 	},
+	// ── Aurora · unlock: Jack of All Trades — glacial shimmer ─────────────
 	{
 		id: 'aurora',
 		name: 'Aurora',
-		description: 'Lush and shimmering. Unlocked by Jack of All Trades.',
-		chords: [
-			ch('A3', 'C#4', 'E4', 'A4'), // A
-			ch('E4', 'G#4', 'B4', 'E5'), // E
-			ch('F#3', 'A3', 'C#4', 'F#4'), // F#m
-			ch('D4', 'F#4', 'A4', 'D5'), // D
-			ch('A3', 'C#4', 'E4', 'A4'),
-			ch('E4', 'G#4', 'B4', 'E5'),
-			ch('D4', 'F#4', 'A4', 'D5'),
-			ch('E4', 'G#4', 'B4', 'E5')
-		],
-		stepMs: 330,
-		stepsPerChord: 14,
+		description: 'Wide, glacial shimmer. Unlocked by Jack of All Trades.',
+		root: 'A3',
+		scale: SCALES.major,
+		progression: [0, 4, 5, 3],
+		stepMs: 320,
+		stepsPerBar: 16,
 		cutoff: 3900,
-		arpGain: 0.09,
-		padGain: 0.07,
-		delayTime: 0.4,
-		feedback: 0.34,
-		wave: 'sine',
-		partial: 0.44,
-		arp: SPARSE,
-		unlock: 'all-families'
+		delayTime: 0.45,
+		feedback: 0.36,
+		unlock: 'all-families',
+		parts: [
+			{
+				role: 'pad',
+				mode: 'chord',
+				voice: pad({ gain: 0.05, attack: 1.2, release: 2.2, detune: 9 }),
+				pattern: seq(16, { 0: [0, 1, 2, 4] })
+			},
+			{
+				role: 'shimmer',
+				mode: 'chord',
+				voice: glass({ octave: 1, gain: 0.04, release: 2.0 }),
+				pattern: seq(16, { 0: 4, 4: 5, 8: 6, 12: 5 })
+			},
+			{
+				role: 'bell',
+				mode: 'scale',
+				voice: glass({ octave: 1, gain: 0.04 }),
+				pattern: seq(32, { 3: 7, 11: 9, 19: 11, 27: 9 })
+			}
+		]
 	},
+	// ── Frost · unlock: Card Sharp — crystalline and icy ──────────────────
 	{
 		id: 'frost',
 		name: 'Frost',
-		description: 'Cool and glassy. Unlocked by the Card Sharp badge.',
-		chords: [
-			ch('C#4', 'E4', 'G#4', 'C#5'), // C#m
-			ch('A3', 'C#4', 'E4', 'A4'), // A
-			ch('E4', 'G#4', 'B4', 'E5'), // E
-			ch('B3', 'D#4', 'F#4', 'B4'), // B
-			ch('C#4', 'E4', 'G#4', 'C#5'),
-			ch('A3', 'C#4', 'E4', 'A4'),
-			ch('B3', 'D#4', 'F#4', 'B4'),
-			ch('E4', 'G#4', 'B4', 'E5')
-		],
-		stepMs: 300,
-		stepsPerChord: 12,
+		description: 'Crystalline and cool. Unlocked by the Card Sharp badge.',
+		root: 'C#4',
+		scale: SCALES.minor,
+		progression: [0, 5, 2, 4],
+		stepMs: 175,
+		stepsPerBar: 16,
 		cutoff: 4200,
-		arpGain: 0.088,
-		padGain: 0.05,
-		delayTime: 0.31,
+		delayTime: 0.3,
 		feedback: 0.3,
-		wave: 'sine',
-		partial: 0.5,
-		arp: FLOW,
-		unlock: 'fifty-wins'
+		unlock: 'fifty-wins',
+		parts: [
+			{
+				role: 'bass',
+				mode: 'chord',
+				voice: bass({ gain: 0.07, release: 0.6 }),
+				pattern: seq(16, { 0: 0, 8: 0 })
+			},
+			{
+				role: 'glass',
+				mode: 'chord',
+				voice: glass({ gain: 0.05, release: 0.9, partial: 0.6 }),
+				pattern: seq(16, { 0: 0, 3: 2, 6: 1, 9: 3, 12: 2, 15: 1 })
+			},
+			{
+				role: 'lead',
+				mode: 'scale',
+				voice: glass({ octave: 1, gain: 0.045, release: 0.8 }),
+				pattern: seq(32, { 0: 4, 8: 6, 16: 7, 20: 6, 24: 4, 30: 2 })
+			}
+		]
 	}
 ];
 

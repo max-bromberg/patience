@@ -24,6 +24,21 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
 	{
+		version: '1.6.0',
+		date: '2026-07-04',
+		title: 'Fuller soundtracks & smoother scrolling',
+		changes: [
+			{
+				kind: 'improved',
+				text: 'The game music is now a set of genuinely different little tunes — each with its own melody, bass, and rhythm — rather than variations on one arpeggio.'
+			},
+			{
+				kind: 'improved',
+				text: 'Scrolling now feels native: the scrollbar is hidden throughout, so lists and sheets glide without any browser chrome.'
+			}
+		]
+	},
+	{
 		version: '1.5.0',
 		date: '2026-07-04',
 		title: 'A soundtrack for every game',

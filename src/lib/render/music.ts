@@ -1,14 +1,14 @@
 /**
- * Background ambience — a warm, music-box style score. Each mood plays a flowing
- * arpeggio of soft bell tones drawn only from the notes of the current chord, so
- * it always stays consonant. A gentle echo gives it lush space and a quiet
- * octave pad grounds the harmony. No audio assets; all synthesized via Web
- * Audio, SSR-safe, started only from a user gesture.
+ * Background ambience — a small multi-voice sequencer. Each track (see
+ * $lib/audio/moods) is its own arrangement: a chord progression in some
+ * key/scale plus a handful of voices (bass, pads, a real melodic lead, arps,
+ * sparkles, soft percussion), each with its own rhythm and timbre. That's what
+ * makes the tracks distinct tunes rather than one arpeggio re-keyed.
  *
- * The mood is chosen to fit the game you're playing (see $lib/audio/moods), can
- * be switched live as you move between games, and adapts to how you're doing:
- * `setIntensity` brightens and energizes the sound as you close on a win and
- * dims it when you're stuck.
+ * Everything is synthesized via Web Audio (no assets), SSR-safe, and started
+ * only from a user gesture. The track is chosen to fit the game you're playing,
+ * can switch live between games, and adapts to how you're doing: `setIntensity`
+ * brightens and energizes as you close on a win and dims when you're stuck.
  *
  * iOS Safari needs extra care to make a synth-only graph audible:
  *  - a 1-sample silent buffer must be played *inside* the unlocking gesture,
@@ -17,26 +17,22 @@
  *  - the context must be resumed again after interruptions (tab hide, calls).
  */
 
-import { LOBBY_MOOD, getMood, type Mood } from '$lib/audio/moods';
+import { LOBBY_MOOD, getMood, hz, type Cell, type Mood, type Voice } from '$lib/audio/moods';
 
 type Ctor = typeof AudioContext;
 
 class Ambience {
 	private ctx: AudioContext | null = null;
 	private master: GainNode | null = null;
+	private comp: DynamicsCompressorNode | null = null;
 	private filter: BiquadFilterNode | null = null;
-	private arpBus: GainNode | null = null;
+	private voiceBus: GainNode | null = null;
 	private delayNode: DelayNode | null = null;
 	private feedbackGain: GainNode | null = null;
-	private sweepDepth: GainNode | null = null;
-	private padVoices: { osc: OscillatorNode; gain: GainNode }[] = [];
-	private lfos: OscillatorNode[] = [];
-	private graph: AudioNode[] = []; // nodes to disconnect on stop
+	private graph: AudioNode[] = [];
+	private noise: AudioBuffer | null = null;
 	private timer: ReturnType<typeof setInterval> | null = null;
-	private chordIdx = 0;
-	private chordStep = 0;
-	private arpStep = 0;
-	private pool: number[] = [];
+	private step = 0;
 	private volume = 0.5;
 	private intensity = 0.5; // 0 = struggling/pensive, 1 = winning/bright
 	private running = false;
@@ -61,19 +57,13 @@ class Ambience {
 	}
 
 	private baseGain(): number {
-		// bells are short/sparse, so a bit more level than a drone — with headroom
-		// kept under the echo build-up so dense passages never clip.
-		return this.volume * 0.42;
+		return this.volume * 0.5;
 	}
-
-	/** Effective lowpass cutoff for the current mood + intensity (brighter = winning). */
 	private effectiveCutoff(): number {
 		return this.mood.cutoff * (0.55 + 0.5 * this.intensity);
 	}
-
-	/** Melodic bus level for the current intensity (livelier = winning). */
-	private arpLevel(): number {
-		return 0.78 + 0.4 * this.intensity;
+	private busLevel(): number {
+		return 0.78 + 0.38 * this.intensity;
 	}
 
 	/** Play a 1-sample silent buffer to unlock audio on iOS (must be in-gesture). */
@@ -113,12 +103,10 @@ class Ambience {
 	private bindRecovery(): void {
 		if (this.boundRecovery || typeof window === 'undefined') return;
 		this.boundRecovery = true;
-		// When the tab is backgrounded (app switch, lock, another tab) quiet the
-		// music; when it returns to the foreground, bring it back. Without this the
-		// silent media-channel loop keeps the audio session alive and the synth
-		// plays on behind other apps — on iOS the music never stops after swiping
-		// out. Gestures also trigger a resume, to recover from iOS suspending the
-		// context after an interruption (a call, Siri) while we're still visible.
+		// Backgrounded (app switch, lock, another tab) → quiet the music; foreground
+		// → bring it back. Without this the silent media-channel loop keeps the
+		// synth playing behind other apps. Gestures also trigger a resume, to
+		// recover from iOS suspending the context after an interruption.
 		const onVisibility = () => {
 			if (typeof document !== 'undefined' && document.hidden) this.suspend();
 			else this.resume();
@@ -128,7 +116,6 @@ class Ambience {
 		window.addEventListener('touchend', () => this.resume());
 	}
 
-	/** Pause playback while backgrounded, keeping the graph and state intact. */
 	private suspend(): void {
 		if (this.timer !== null) {
 			clearInterval(this.timer);
@@ -138,7 +125,6 @@ class Ambience {
 		if (this.ctx && this.ctx.state === 'running') void this.ctx.suspend();
 	}
 
-	/** Resume playback after returning to the foreground (or on a gesture). */
 	private resume(): void {
 		if (!this.running || (typeof document !== 'undefined' && document.hidden)) return;
 		if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume();
@@ -146,214 +132,225 @@ class Ambience {
 		if (this.timer === null) this.timer = setInterval(() => this.tick(), this.mood.stepMs);
 	}
 
-	/** Two octaves of the chord's notes, ascending — the arpeggio's note pool. */
-	private makePool(chord: number[]): number[] {
-		return [...chord, ...chord.map((f) => f * 2)].sort((a, b) => a - b);
+	private noiseBuffer(ac: AudioContext): AudioBuffer {
+		if (!this.noise || this.noise.sampleRate !== ac.sampleRate) {
+			const frames = Math.floor(ac.sampleRate * 0.2);
+			const b = ac.createBuffer(1, frames, ac.sampleRate);
+			const d = b.getChannelData(0);
+			for (let i = 0; i < frames; i++) d[i] = Math.random() * 2 - 1;
+			this.noise = b;
+		}
+		return this.noise;
 	}
 
 	start(): void {
 		if (this.running || !this.make()) return;
 		const ac = this.ctx!;
-		const mood = this.mood;
 		void ac.resume();
 		this.unlock(ac);
 		this.playSilentLoop();
 		this.bindRecovery();
 		this.running = true;
 
+		const comp = ac.createDynamicsCompressor();
+		comp.threshold.value = -16;
+		comp.knee.value = 22;
+		comp.ratio.value = 3.2;
+		comp.attack.value = 0.006;
+		comp.release.value = 0.2;
+		comp.connect(ac.destination);
+
 		const master = ac.createGain();
-		// soft fade-in so it eases in rather than appearing
 		master.gain.setValueAtTime(0.0001, ac.currentTime);
-		master.gain.exponentialRampToValueAtTime(Math.max(0.0002, this.baseGain()), ac.currentTime + 4);
-		master.connect(ac.destination);
+		master.gain.exponentialRampToValueAtTime(Math.max(0.0002, this.baseGain()), ac.currentTime + 3);
+		master.connect(comp);
 
 		const filter = ac.createBiquadFilter();
 		filter.type = 'lowpass';
 		filter.frequency.value = this.effectiveCutoff();
-		filter.Q.value = 0.4;
+		filter.Q.value = 0.5;
 		filter.connect(master);
 
-		// A damped feedback delay gives the bells a lush, spacious tail.
+		// feedback delay for space
 		const delay = ac.createDelay(1.0);
-		delay.delayTime.value = mood.delayTime;
+		delay.delayTime.value = this.mood.delayTime;
 		const feedback = ac.createGain();
-		feedback.gain.value = mood.feedback;
+		feedback.gain.value = this.mood.feedback;
 		const damp = ac.createBiquadFilter();
 		damp.type = 'lowpass';
-		damp.frequency.value = 2200; // keep echoes soft, not brittle
+		damp.frequency.value = 2400;
 		const wet = ac.createGain();
-		wet.gain.value = 0.4;
+		wet.gain.value = 0.35;
 		delay.connect(damp).connect(feedback).connect(delay);
 		delay.connect(wet).connect(filter);
 
-		// Everything melodic feeds this bus → dry into the filter and into the echo.
-		const arpBus = ac.createGain();
-		arpBus.gain.value = this.arpLevel();
-		arpBus.connect(filter);
-		arpBus.connect(delay);
+		// all tuned voices feed this bus → filter (+ reverb send)
+		const voiceBus = ac.createGain();
+		voiceBus.gain.value = this.busLevel();
+		voiceBus.connect(filter);
+		voiceBus.connect(delay);
 
+		this.comp = comp;
 		this.master = master;
 		this.filter = filter;
-		this.arpBus = arpBus;
+		this.voiceBus = voiceBus;
 		this.delayNode = delay;
 		this.feedbackGain = feedback;
-		this.graph = [master, filter, delay, feedback, damp, wet, arpBus];
+		this.graph = [comp, master, filter, delay, feedback, damp, wet, voiceBus];
 
-		// A very slow filter sweep adds a gentle shimmer over the loop.
-		const sweep = ac.createOscillator();
-		sweep.type = 'sine';
-		sweep.frequency.value = 0.03;
-		const sweepDepth = ac.createGain();
-		sweepDepth.gain.value = mood.cutoff * 0.1;
-		sweep.connect(sweepDepth).connect(filter.frequency);
-		sweep.start();
-		this.lfos = [sweep];
-		this.sweepDepth = sweepDepth;
-
-		this.chordIdx = 0;
-		this.chordStep = 0;
-		this.arpStep = 0;
-		this.pool = this.makePool(mood.chords[0]);
-		this.timer = setInterval(() => this.tick(), mood.stepMs);
+		this.step = 0;
+		this.timer = setInterval(() => this.tick(), this.mood.stepMs);
 	}
 
-	/**
-	 * Switch the active mood, ramping timbre smoothly and picking up the new chord
-	 * progression at the next step. Safe to call before start() (stored for then)
-	 * or repeatedly with the same mood (a no-op).
-	 */
+	/** Switch tracks, ramping timbre and restarting the sequence cleanly. */
 	setMood(mood: Mood): void {
 		if (mood.id === this.mood.id) return;
 		const restart = mood.stepMs !== this.mood.stepMs;
 		this.mood = mood;
+		this.step = 0;
 		if (!this.running || !this.ctx) return;
-		const ac = this.ctx;
-		const t = ac.currentTime;
-		// ease the new progression in from the top
-		this.chordIdx = 0;
-		this.chordStep = 0;
-		this.arpStep = 0;
-		this.pool = this.makePool(mood.chords[0]);
-		// ramp timbre to the new mood
-		if (this.filter) {
-			this.filter.frequency.cancelScheduledValues(t);
-			this.filter.frequency.setTargetAtTime(this.effectiveCutoff(), t, 0.6);
-		}
-		if (this.sweepDepth) this.sweepDepth.gain.setTargetAtTime(mood.cutoff * 0.1, t, 0.6);
-		if (this.delayNode) this.delayNode.delayTime.setTargetAtTime(mood.delayTime, t, 0.6);
-		if (this.feedbackGain) this.feedbackGain.gain.setTargetAtTime(mood.feedback, t, 0.6);
+		const t = this.ctx.currentTime;
+		this.filter?.frequency.setTargetAtTime(this.effectiveCutoff(), t, 0.6);
+		this.delayNode?.delayTime.setTargetAtTime(mood.delayTime, t, 0.6);
+		this.feedbackGain?.gain.setTargetAtTime(mood.feedback, t, 0.6);
 		if (restart && this.timer !== null) {
 			clearInterval(this.timer);
 			this.timer = setInterval(() => this.tick(), mood.stepMs);
 		}
 	}
 
-	/**
-	 * Adapt the sound to how the player's doing (0 = stuck/struggling → darker and
-	 * sparser, 1 = winning → brighter and livelier). Ramps smoothly so it breathes
-	 * rather than jumps.
-	 */
+	/** Adapt to how the player's doing (0 = stuck → darker/sparser, 1 = winning). */
 	setIntensity(v: number): void {
 		const next = Math.max(0, Math.min(1, v));
 		if (Math.abs(next - this.intensity) < 0.02) return;
 		this.intensity = next;
 		if (!this.running || !this.ctx) return;
 		const t = this.ctx.currentTime;
-		if (this.filter) this.filter.frequency.setTargetAtTime(this.effectiveCutoff(), t, 1.2);
-		if (this.arpBus) this.arpBus.gain.setTargetAtTime(this.arpLevel(), t, 1.2);
+		this.filter?.frequency.setTargetAtTime(this.effectiveCutoff(), t, 1.2);
+		this.voiceBus?.gain.setTargetAtTime(this.busLevel(), t, 1.2);
 	}
 
-	/** One arpeggio step: maybe change chord, then strike one bell note. */
+	// --- scale/degree helpers ------------------------------------------------
+
+	/** A scale degree (0 = tonic; wraps octaves) → semitones from the tonic. */
+	private degToSemitone(deg: number): number {
+		const s = this.mood.scale;
+		const n = s.length;
+		const oct = Math.floor(deg / n);
+		const idx = ((deg % n) + n) % n;
+		return s[idx] + 12 * oct;
+	}
+
+	private freqForDegree(deg: number, octave = 0): number {
+		return hz(this.mood.root) * Math.pow(2, (this.degToSemitone(deg) + 12 * octave) / 12);
+	}
+
+	/** Steps until this part next plays (for holding sustained notes). */
+	private gapSteps(pattern: Cell[], idx: number): number {
+		const len = pattern.length;
+		for (let i = 1; i <= len; i++) if (pattern[(idx + i) % len] != null) return i;
+		return len;
+	}
+
+	// --- sequencer -----------------------------------------------------------
+
 	private tick(): void {
 		const ac = this.ctx;
-		if (!ac || !this.running || !this.arpBus) return;
+		if (!ac || !this.running || !this.voiceBus) return;
 		const mood = this.mood;
-		const t = ac.currentTime + 0.04; // tiny lookahead for clean scheduling
+		const t = ac.currentTime + 0.05; // lookahead for clean scheduling
+		const bar = Math.floor(this.step / mood.stepsPerBar) % mood.progression.length;
+		const chordRoot = mood.progression[bar];
+		const stepSec = mood.stepMs / 1000;
 
-		// At the top of each chord, swap the pad bed under the melody.
-		if (this.chordStep === 0) this.setPad(mood.chords[this.chordIdx], t);
+		for (const part of mood.parts) {
+			const idx = this.step % part.pattern.length;
+			const cell = part.pattern[idx];
+			if (cell == null) continue;
+			// thin the melody out when struggling; keep bass/pad grounding
+			const melodic = part.mode !== 'chord' || (part.role !== 'bass' && part.role !== 'pad');
+			if (melodic && this.intensity < 0.32 && this.step % 2 === 1) continue;
 
-		const idx = mood.arp[this.arpStep % mood.arp.length];
-		this.arpStep++;
-		// When struggling, thin the melody out for a more pensive feel.
-		const rest = idx < 0 || (this.intensity < 0.3 && this.arpStep % 3 === 0);
-		if (!rest) {
-			const freq = this.pool[idx % this.pool.length];
-			// a soft accent on the first note of each chord gives a gentle pulse
-			const gain = mood.arpGain * (this.chordStep === 0 ? 1.25 : 1);
-			this.pluck(freq, t, gain);
-		}
-
-		this.chordStep++;
-		if (this.chordStep >= mood.stepsPerChord) {
-			this.chordStep = 0;
-			this.chordIdx = (this.chordIdx + 1) % mood.chords.length;
-			this.pool = this.makePool(mood.chords[this.chordIdx]);
-		}
-	}
-
-	/** A warm bell pluck: fundamental + a quieter octave partial, fast decay. */
-	private pluck(freq: number, when: number, gain: number): void {
-		const ac = this.ctx;
-		if (!ac || !this.arpBus) return;
-		const env = ac.createGain();
-		env.gain.setValueAtTime(0.0001, when);
-		env.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), when + 0.012); // soft strike
-		env.gain.exponentialRampToValueAtTime(0.0001, when + 1.7); // bell-like ring-out
-		env.connect(this.arpBus);
-
-		const o1 = ac.createOscillator();
-		o1.type = this.mood.wave;
-		o1.frequency.value = freq;
-		o1.connect(env);
-
-		const o2 = ac.createOscillator();
-		o2.type = 'sine';
-		o2.frequency.value = freq * 2; // octave shimmer
-		const o2g = ac.createGain();
-		o2g.gain.value = this.mood.partial;
-		o2.connect(o2g).connect(env);
-
-		o1.start(when);
-		o2.start(when);
-		o1.stop(when + 1.8);
-		o2.stop(when + 1.8);
-	}
-
-	/** Crossfade a soft two-note octave pad to ground the current chord. */
-	private setPad(chord: number[], when: number): void {
-		const ac = this.ctx;
-		if (!ac || !this.filter) return;
-
-		// release the previous pad
-		for (const v of this.padVoices) {
-			v.gain.gain.cancelScheduledValues(when);
-			v.gain.gain.setValueAtTime(Math.max(0.0002, v.gain.gain.value), when);
-			v.gain.gain.exponentialRampToValueAtTime(0.0001, when + 1.4);
-			try {
-				v.osc.stop(when + 1.6);
-			} catch {
-				/* already scheduled */
+			if (part.mode === 'perc') {
+				this.perc(t, typeof cell === 'number' ? cell : 1, part.voice);
+				continue;
+			}
+			const gate = part.voice.sustain ? this.gapSteps(part.pattern, idx) * stepSec : 0;
+			const notes = Array.isArray(cell) ? cell : [cell];
+			for (const nRaw of notes) {
+				const n = nRaw as number;
+				const deg = part.mode === 'chord' ? chordRoot + 2 * n : n;
+				this.playNote(this.freqForDegree(deg, part.voice.octave ?? 0), t, gate, part.voice);
 			}
 		}
-		this.padVoices = [];
-		// pad thins out when struggling, fills in when winning
-		const padGain = this.mood.padGain * (0.45 + 0.7 * this.intensity);
-		if (padGain <= 0.001) return;
+		this.step++;
+	}
 
-		// root + its octave: pure, consonant warmth under the bells
-		const root = chord[0];
-		for (const freq of [root, root * 2]) {
-			const osc = ac.createOscillator();
-			osc.type = 'triangle';
-			osc.frequency.value = freq;
-			const gain = ac.createGain();
-			gain.gain.setValueAtTime(0.0001, when);
-			gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, padGain), when + 1.6);
-			osc.connect(gain).connect(this.filter);
-			osc.start(when);
-			this.padVoices.push({ osc, gain });
+	/** Schedule one tuned note (pluck or held), with optional detune + partial. */
+	private playNote(freq: number, when: number, gateSec: number, v: Voice): void {
+		const ac = this.ctx;
+		if (!ac || !this.voiceBus) return;
+		const peak = Math.max(0.0002, v.gain * (0.7 + 0.4 * this.intensity));
+		const env = ac.createGain();
+		env.gain.setValueAtTime(0.0001, when);
+		env.gain.exponentialRampToValueAtTime(peak, when + v.attack);
+		let end: number;
+		if (v.sustain) {
+			const hold = when + v.attack + Math.max(0, gateSec - v.attack);
+			env.gain.setValueAtTime(peak, hold);
+			env.gain.exponentialRampToValueAtTime(0.0001, hold + v.release);
+			end = hold + v.release;
+		} else {
+			env.gain.exponentialRampToValueAtTime(0.0001, when + v.attack + v.release);
+			end = when + v.attack + v.release;
 		}
+		env.connect(this.voiceBus);
+
+		const oscs: OscillatorNode[] = [];
+		const o1 = ac.createOscillator();
+		o1.type = v.wave;
+		o1.frequency.value = freq;
+		o1.connect(env);
+		oscs.push(o1);
+		if (v.detune) {
+			const o2 = ac.createOscillator();
+			o2.type = v.wave;
+			o2.frequency.value = freq;
+			o2.detune.value = v.detune;
+			o2.connect(env);
+			oscs.push(o2);
+		}
+		if (v.partial) {
+			const op = ac.createOscillator();
+			op.type = 'sine';
+			op.frequency.value = freq * 2;
+			const pg = ac.createGain();
+			pg.gain.value = v.partial;
+			op.connect(pg).connect(env);
+			oscs.push(op);
+		}
+		for (const o of oscs) {
+			o.start(when);
+			o.stop(end + 0.05);
+		}
+	}
+
+	/** A soft shaker/tick — filtered noise burst (percussion). */
+	private perc(when: number, brightness: number, v: Voice): void {
+		const ac = this.ctx;
+		if (!ac || !this.voiceBus) return;
+		const src = ac.createBufferSource();
+		src.buffer = this.noiseBuffer(ac);
+		const hp = ac.createBiquadFilter();
+		hp.type = 'highpass';
+		hp.frequency.value = 3000 + brightness * 3000;
+		const env = ac.createGain();
+		const peak = Math.max(0.0002, v.gain * (0.6 + 0.5 * this.intensity));
+		env.gain.setValueAtTime(peak, when);
+		env.gain.exponentialRampToValueAtTime(0.0001, when + v.release);
+		src.connect(hp).connect(env).connect(this.voiceBus);
+		src.start(when);
+		src.stop(when + v.release + 0.02);
 	}
 
 	stop(): void {
@@ -369,22 +366,13 @@ class Ambience {
 			this.master.gain.setValueAtTime(Math.max(0.0002, this.master.gain.value), t);
 			this.master.gain.exponentialRampToValueAtTime(0.0001, t + 1.5);
 		}
-		const oscs = [...this.lfos, ...this.padVoices.map((v) => v.osc)];
 		const graph = this.graph;
-		this.lfos = [];
-		this.padVoices = [];
 		this.graph = [];
+		this.filter = null;
+		this.voiceBus = null;
 		this.delayNode = null;
 		this.feedbackGain = null;
-		this.sweepDepth = null;
 		setTimeout(() => {
-			for (const o of oscs) {
-				try {
-					o.stop();
-				} catch {
-					/* already stopped */
-				}
-			}
 			for (const n of graph) {
 				try {
 					n.disconnect();
@@ -408,7 +396,6 @@ class Ambience {
 	get isRunning(): boolean {
 		return this.running;
 	}
-
 	get moodId(): string {
 		return this.mood.id;
 	}
@@ -428,15 +415,15 @@ function silentWavUrl(): string {
 	str(8, 'WAVE');
 	str(12, 'fmt ');
 	v.setUint32(16, 16, true);
-	v.setUint16(20, 1, true); // PCM
-	v.setUint16(22, 1, true); // mono
+	v.setUint16(20, 1, true);
+	v.setUint16(22, 1, true);
 	v.setUint32(24, rate, true);
 	v.setUint32(28, rate, true);
 	v.setUint16(32, 1, true);
-	v.setUint16(34, 8, true); // 8-bit
+	v.setUint16(34, 8, true);
 	str(36, 'data');
 	v.setUint32(40, samples, true);
-	for (let i = 0; i < samples; i++) v.setUint8(44 + i, 128); // 8-bit silence
+	for (let i = 0; i < samples; i++) v.setUint8(44 + i, 128);
 	return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
 
