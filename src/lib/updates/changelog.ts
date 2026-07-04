@@ -24,6 +24,21 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
 	{
+		version: '1.4.1',
+		date: '2026-07-04',
+		title: 'Cleaner & calmer',
+		changes: [
+			{
+				kind: 'fixed',
+				text: 'The labels in these notes no longer overlap the text while you scroll.'
+			},
+			{
+				kind: 'improved',
+				text: 'Locked pinch- and double-tap-zoom so the table stays put while you play.'
+			}
+		]
+	},
+	{
 		version: '1.4.0',
 		date: '2026-07-04',
 		title: 'One-tap updates',

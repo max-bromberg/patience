@@ -56,7 +56,9 @@
 						<ul class="changes">
 							{#each r.changes as c (c.text)}
 								<li>
-									<span class="tag {c.kind}">{TAG[c.kind]}</span>
+									<!-- data-kind (not a class) so the kind never collides with a
+									     utility class like Tailwind's `.fixed` (position: fixed). -->
+									<span class="tag" data-kind={c.kind}>{TAG[c.kind]}</span>
 									<span class="ctext">{c.text}</span>
 								</li>
 							{/each}
@@ -169,12 +171,9 @@
 	}
 	.ver {
 		font-weight: 800;
-		font-size: 0.72rem;
-		letter-spacing: 0.03em;
-		padding: 0.15rem 0.45rem;
-		border-radius: 999px;
-		background: var(--back-1);
-		color: #fff;
+		font-size: 0.78rem;
+		letter-spacing: 0.02em;
+		color: var(--back-1);
 	}
 	.rel-title {
 		font-weight: 700;
@@ -195,36 +194,35 @@
 	}
 	.changes li {
 		display: flex;
-		gap: 0.55rem;
-		align-items: flex-start;
+		gap: 0.6rem;
+		align-items: baseline;
 		font-size: 0.92rem;
 		line-height: 1.4;
 	}
+	/* Plain colored text labels (no background pill): a filled/rounded box gets
+	   composited onto its own layer and can be left behind — painting over the
+	   text — during iOS momentum scroll. Text has no such separate paint. */
 	.tag {
 		flex: 0 0 auto;
-		margin-top: 0.08rem;
-		font-size: 0.62rem;
+		width: 4.3rem;
+		font-size: 0.68rem;
 		font-weight: 800;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-		padding: 0.15rem 0.4rem;
-		border-radius: 0.35rem;
 		white-space: nowrap;
 	}
-	.tag.added {
-		background: rgba(47, 133, 90, 0.15);
+	.tag[data-kind='added'] {
 		color: #2f7a52;
 	}
-	.tag.improved {
-		background: rgba(43, 108, 176, 0.15);
+	.tag[data-kind='improved'] {
 		color: #2b6cb0;
 	}
-	.tag.fixed {
-		background: rgba(183, 121, 31, 0.16);
+	.tag[data-kind='fixed'] {
 		color: #a76a17;
 	}
 	.ctext {
 		flex: 1;
+		min-width: 0;
 	}
 
 	footer {

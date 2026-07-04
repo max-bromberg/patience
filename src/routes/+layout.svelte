@@ -30,12 +30,24 @@
 		// greeted by a stack of popups for progress made before this shipped.
 		achievements.reconcile();
 
+		// Lock zoom for an app-like feel. iOS Safari ignores viewport
+		// user-scalable/maximum-scale for pinch, so block its (non-standard)
+		// gesture events directly; `touch-action: manipulation` (layout.css)
+		// covers double-tap-to-zoom.
+		const blockGesture = (e: Event) => e.preventDefault();
+		document.addEventListener('gesturestart', blockGesture, { passive: false });
+		document.addEventListener('gesturechange', blockGesture, { passive: false });
+		document.addEventListener('gestureend', blockGesture, { passive: false });
+
 		const kick = () => {
 			if (settings.music) ambience.start();
 		};
 		window.addEventListener('pointerdown', kick, { once: true });
 		window.addEventListener('keydown', kick, { once: true });
 		return () => {
+			document.removeEventListener('gesturestart', blockGesture);
+			document.removeEventListener('gesturechange', blockGesture);
+			document.removeEventListener('gestureend', blockGesture);
 			window.removeEventListener('pointerdown', kick);
 			window.removeEventListener('keydown', kick);
 		};
