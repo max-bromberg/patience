@@ -206,14 +206,38 @@ class Ambience {
 	private bindRecovery(): void {
 		if (this.boundRecovery || typeof window === 'undefined') return;
 		this.boundRecovery = true;
-		const resume = () => {
-			if (this.running && this.ctx && this.ctx.state !== 'running') void this.ctx.resume();
-			if (this.running && this.silentEl && this.silentEl.paused)
-				void this.silentEl.play().catch(() => {});
+		// When the tab is backgrounded (app switch, lock, another tab) quiet the
+		// music; when it returns to the foreground, bring it back. Without this the
+		// silent media-channel loop keeps the audio session alive and the synth
+		// plays on behind other apps — on iOS the music never stops after swiping
+		// out. Gestures also trigger a resume, to recover from iOS suspending the
+		// context after an interruption (a call, Siri) while we're still visible.
+		const onVisibility = () => {
+			if (typeof document !== 'undefined' && document.hidden) this.suspend();
+			else this.resume();
 		};
-		document.addEventListener('visibilitychange', resume);
-		window.addEventListener('pointerdown', resume);
-		window.addEventListener('touchend', resume);
+		document.addEventListener('visibilitychange', onVisibility);
+		window.addEventListener('pointerdown', () => this.resume());
+		window.addEventListener('touchend', () => this.resume());
+	}
+
+	/** Pause playback while backgrounded, keeping the graph and state intact. */
+	private suspend(): void {
+		if (this.timer !== null) {
+			clearInterval(this.timer);
+			this.timer = null;
+		}
+		if (this.silentEl) this.silentEl.pause();
+		if (this.ctx && this.ctx.state === 'running') void this.ctx.suspend();
+	}
+
+	/** Resume playback after returning to the foreground (or on a gesture). */
+	private resume(): void {
+		if (!this.running || (typeof document !== 'undefined' && document.hidden)) return;
+		if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume();
+		if (this.silentEl && this.silentEl.paused) void this.silentEl.play().catch(() => {});
+		if (this.timer === null && this.mood)
+			this.timer = setInterval(() => this.tick(), this.mood.stepMs);
 	}
 
 	/** Two octaves of the chord's notes, ascending — the arpeggio's note pool. */
