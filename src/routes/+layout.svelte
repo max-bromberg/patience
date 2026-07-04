@@ -6,6 +6,7 @@
 	import '$lib/theme/faces.css';
 	import VibeLayer from '$lib/render/VibeLayer.svelte';
 	import UpdateNotes from '$lib/render/UpdateNotes.svelte';
+	import UpdatePrompt from '$lib/render/UpdatePrompt.svelte';
 	import AchievementPopup from '$lib/render/AchievementPopup.svelte';
 	import { ambience } from '$lib/render/music';
 	import { achievements } from '$lib/storage/achievements.svelte';
@@ -86,4 +87,5 @@
 <VibeLayer />
 {@render children()}
 <UpdateNotes />
+<UpdatePrompt />
 <AchievementPopup />

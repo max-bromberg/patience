@@ -57,6 +57,14 @@ sw.addEventListener('activate', (event) => {
 	);
 });
 
+// The page shows an "update ready" prompt when a new worker is waiting; tapping
+// it posts this message so the new version takes over immediately (the page then
+// reloads on the resulting controllerchange). This is the ONLY path that skips
+// waiting — automatic updates still defer to the next launch (see the note above).
+sw.addEventListener('message', (event) => {
+	if (event.data === 'skip-waiting') void sw.skipWaiting();
+});
+
 sw.addEventListener('fetch', (event) => {
 	const { request } = event;
 	if (request.method !== 'GET') return;

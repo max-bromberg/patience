@@ -736,7 +736,8 @@
 		display: grid;
 		gap: 1.1rem;
 		overflow-y: auto;
-		-webkit-overflow-scrolling: touch;
+		/* no `-webkit-overflow-scrolling: touch` — it strands backgrounded children
+		   (swatches, chips) in place during iOS momentum scroll. */
 		/* room for the scrollbar / fade so content doesn't hug the edge */
 		padding-right: 0.3rem;
 		margin-right: -0.3rem;

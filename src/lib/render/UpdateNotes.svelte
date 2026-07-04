@@ -150,7 +150,10 @@
 
 	.body {
 		overflow-y: auto;
-		-webkit-overflow-scrolling: touch;
+		/* NB: no `-webkit-overflow-scrolling: touch` — on iOS it puts the scroll on
+		   its own layer and leaves non-composited children (the tag/version badges)
+		   painted in place, so they appear to stay fixed while text scrolls. Modern
+		   iOS momentum-scrolls natively without it. */
 		overscroll-behavior: contain;
 		padding: 0.75rem 1.25rem 1rem;
 		display: grid;

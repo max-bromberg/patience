@@ -24,6 +24,21 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
 	{
+		version: '1.4.0',
+		date: '2026-07-04',
+		title: 'One-tap updates',
+		changes: [
+			{
+				kind: 'added',
+				text: 'When a new version is ready, an “Update available” button appears — one tap refreshes you to the latest, no need to fully quit and reopen.'
+			},
+			{
+				kind: 'fixed',
+				text: 'Fixed the “What’s new” list so the New / Improved / Fixed labels scroll along with the text instead of staying put.'
+			}
+		]
+	},
+	{
 		version: '1.3.0',
 		date: '2026-07-04',
 		title: 'Polish & fixes',

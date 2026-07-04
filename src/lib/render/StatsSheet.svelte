@@ -146,7 +146,8 @@
 	}
 	.sheet-body {
 		overflow-y: auto;
-		-webkit-overflow-scrolling: touch;
+		/* no `-webkit-overflow-scrolling: touch` — it strands backgrounded children
+		   (badge tiles) in place during iOS momentum scroll. */
 		display: grid;
 		gap: 1rem;
 	}
