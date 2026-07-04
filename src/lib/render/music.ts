@@ -39,6 +39,8 @@ class Ambience {
 	private boundRecovery = false;
 	private silentEl: HTMLAudioElement | null = null;
 	private mood: Mood = getMood(LOBBY_MOOD)!;
+	private targetId: string = LOBBY_MOOD; // mood we're heading toward (may still be mid-crossfade)
+	private swapTimer: ReturnType<typeof setTimeout> | null = null;
 
 	private make(): boolean {
 		if (typeof window === 'undefined') return false;
@@ -202,21 +204,41 @@ class Ambience {
 		this.timer = setInterval(() => this.tick(), this.mood.stepMs);
 	}
 
-	/** Switch tracks, ramping timbre and restarting the sequence cleanly. */
+	/**
+	 * Switch tracks with a short crossfade so entering/changing games doesn't jar:
+	 * the voices duck out over a beat (the reverb tail rings on to bridge the gap),
+	 * the track swaps at the bottom of the dip, then the new one fades in. Rapid
+	 * calls (quick navigation) collapse to the latest target.
+	 */
 	setMood(mood: Mood): void {
-		if (mood.id === this.mood.id) return;
-		const restart = mood.stepMs !== this.mood.stepMs;
-		this.mood = mood;
-		this.step = 0;
-		if (!this.running || !this.ctx) return;
-		const t = this.ctx.currentTime;
-		this.filter?.frequency.setTargetAtTime(this.effectiveCutoff(), t, 0.6);
-		this.delayNode?.delayTime.setTargetAtTime(mood.delayTime, t, 0.6);
-		this.feedbackGain?.gain.setTargetAtTime(mood.feedback, t, 0.6);
-		if (restart && this.timer !== null) {
-			clearInterval(this.timer);
-			this.timer = setInterval(() => this.tick(), mood.stepMs);
+		if (mood.id === this.targetId) return;
+		this.targetId = mood.id;
+		if (!this.running || !this.ctx || !this.voiceBus) {
+			this.mood = mood; // not playing yet — just stage it for start()
+			return;
 		}
+		const ac = this.ctx;
+		const fadeOut = 0.34;
+		// duck the voices; a swap already in flight is replaced by this newer one
+		if (this.swapTimer) clearTimeout(this.swapTimer);
+		this.voiceBus.gain.cancelScheduledValues(ac.currentTime);
+		this.voiceBus.gain.setTargetAtTime(0.0001, ac.currentTime, fadeOut / 3);
+		this.swapTimer = setTimeout(() => {
+			this.swapTimer = null;
+			if (!this.running || !this.ctx || !this.voiceBus) return;
+			const restart = mood.stepMs !== this.mood.stepMs;
+			this.mood = mood;
+			this.step = 0;
+			const t = this.ctx.currentTime;
+			this.filter?.frequency.setTargetAtTime(this.effectiveCutoff(), t, 0.3);
+			this.delayNode?.delayTime.setTargetAtTime(mood.delayTime, t, 0.3);
+			this.feedbackGain?.gain.setTargetAtTime(mood.feedback, t, 0.3);
+			if (restart && this.timer !== null) {
+				clearInterval(this.timer);
+				this.timer = setInterval(() => this.tick(), mood.stepMs);
+			}
+			this.voiceBus.gain.setTargetAtTime(this.busLevel(), t, 0.45); // fade the new track in
+		}, fadeOut * 1000);
 	}
 
 	/** Adapt to how the player's doing (0 = stuck → darker/sparser, 1 = winning). */
@@ -227,7 +249,9 @@ class Ambience {
 		if (!this.running || !this.ctx) return;
 		const t = this.ctx.currentTime;
 		this.filter?.frequency.setTargetAtTime(this.effectiveCutoff(), t, 1.2);
-		this.voiceBus?.gain.setTargetAtTime(this.busLevel(), t, 1.2);
+		// don't touch the bus mid-crossfade — the swap's fade-in uses busLevel()
+		// (which already reads the latest intensity) when it lands.
+		if (!this.swapTimer) this.voiceBus?.gain.setTargetAtTime(this.busLevel(), t, 1.2);
 	}
 
 	// --- scale/degree helpers ------------------------------------------------
@@ -359,6 +383,10 @@ class Ambience {
 		const ac = this.ctx;
 		if (this.timer !== null) clearInterval(this.timer);
 		this.timer = null;
+		if (this.swapTimer) {
+			clearTimeout(this.swapTimer);
+			this.swapTimer = null;
+		}
 		if (this.silentEl) this.silentEl.pause();
 		if (ac && this.master) {
 			const t = ac.currentTime;

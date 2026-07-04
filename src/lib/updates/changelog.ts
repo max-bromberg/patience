@@ -24,6 +24,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
 	{
+		version: '1.6.1',
+		date: '2026-07-04',
+		title: 'Smoother music transitions',
+		changes: [
+			{
+				kind: 'improved',
+				text: 'The music now crossfades when you enter or switch games — the old tune eases out and the new one drifts in, so changes feel seamless instead of abrupt.'
+			}
+		]
+	},
+	{
 		version: '1.6.0',
 		date: '2026-07-04',
 		title: 'Fuller soundtracks & smoother scrolling',
