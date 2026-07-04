@@ -21,6 +21,8 @@
 		| 'dice'
 		| 'continue'
 		| 'share'
+		| 'install'
+		| 'ios-share'
 		| 'check';
 </script>
 
@@ -88,6 +90,18 @@
 		<circle cx="18" cy="19" r="2.6" />
 		<line x1="8.3" y1="13.4" x2="15.7" y2="17.6" />
 		<line x1="15.7" y1="6.4" x2="8.3" y2="10.6" />
+	{:else if name === 'install'}
+		<!-- download into a tray = install to device -->
+		<path d="M12 3v10" />
+		<polyline points="8 9.5 12 13.5 16 9.5" />
+		<path d="M5 16.5v2A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5v-2" />
+	{:else if name === 'ios-share'}
+		<!-- iOS share glyph: box with an up-arrow out the top -->
+		<path
+			d="M8 11H6.5A2.5 2.5 0 0 0 4 13.5v5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5v-5A2.5 2.5 0 0 0 17.5 11H16"
+		/>
+		<line x1="12" y1="3" x2="12" y2="14" />
+		<polyline points="8.5 6 12 2.5 15.5 6" />
 	{:else if name === 'check'}
 		<polyline points="5 12.5 10 17.5 19 6.5" />
 	{/if}

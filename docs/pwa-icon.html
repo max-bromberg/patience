@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<style>
+			html,
+			body {
+				margin: 0;
+				padding: 0;
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+			}
+			.bg {
+				width: 100vw;
+				height: 100vh;
+				display: grid;
+				place-items: center;
+				/* Matches the app's felt table gradient (theme.css --table-bg), with a
+				   gentle top light and a soft corner darkening — kept even so the icon
+				   reads cleanly at small sizes (no heavy band). */
+				background: radial-gradient(130% 130% at 50% 8%, #34875e, #1f5e40 52%, #184a32);
+			}
+			/* Card: white rounded rect bearing a red heart (an Ace of Hearts —
+			   matches the hero + sample card), tilted a hair for a playful lift. */
+			.card {
+				position: relative;
+				width: var(--card, 62%);
+				aspect-ratio: 1 / 1.4;
+				background: #fffdf8;
+				border-radius: 12%;
+				transform: rotate(-6deg);
+				box-shadow:
+					0 2.5vw 5vw rgba(0, 0, 0, 0.32),
+					inset 0 0 0 0.6vw rgba(0, 0, 0, 0.05);
+				display: grid;
+				place-items: center;
+			}
+			.heart {
+				width: 58%;
+				color: #c8324a;
+				filter: drop-shadow(0 1vw 1.5vw rgba(200, 50, 74, 0.25));
+			}
+			.pip {
+				position: absolute;
+				color: #c8324a;
+				font:
+					800 9cqw / 0.9 ui-rounded,
+					'SF Pro Rounded',
+					system-ui,
+					sans-serif;
+				text-align: center;
+			}
+			.card {
+				container-type: inline-size;
+			}
+			.pip.tl {
+				top: 6%;
+				left: 7%;
+			}
+			.pip.br {
+				bottom: 6%;
+				right: 7%;
+				transform: rotate(180deg);
+			}
+			.pip small {
+				display: block;
+				font-size: 0.8em;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="bg">
+			<div class="card">
+				<span class="pip tl">A<small>♥</small></span>
+				<svg class="heart" viewBox="0 0 32 30" aria-hidden="true">
+					<path
+						d="M16 29 C16 29 1 18.5 1 8.6 C1 3.8 4.6 0.9 8.6 0.9 C11.9 0.9 14.4 3 16 5.3 C17.6 3 20.1 0.9 23.4 0.9 C27.4 0.9 31 3.8 31 8.6 C31 18.5 16 29 16 29 Z"
+						fill="#c8324a"
+					/>
+				</svg>
+				<span class="pip br">A<small>♥</small></span>
+			</div>
+		</div>
+		<script>
+			// ?card=NN% sets the card width (smaller => maskable safe-zone padding).
+			const p = new URLSearchParams(location.search).get('card');
+			if (p) document.querySelector('.card').style.setProperty('--card', p);
+		</script>
+	</body>
+</html>

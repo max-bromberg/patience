@@ -21,7 +21,11 @@
 	const FAN_TIGHT_X = 0.2;
 	const MIN_W = 30; // wide games (Spider's 10 columns) still fit a phone
 	const MAX_W = 120; // cap card size so desktop isn't oversized (mobile never hits this)
-	const TAP_THRESHOLD = 8; // px of travel before a press becomes a drag
+	const TAP_THRESHOLD = 8; // px of travel before a press becomes a drag (mouse)
+	const TAP_THRESHOLD_TOUCH = 12; // a bit more slack for finger jitter
+	// On touch, lift the dragged card this fraction of its height above the
+	// finger so the fingertip never hides the card being moved.
+	const TOUCH_LIFT = 0.6;
 	const DOUBLE_TAP_MS = 320;
 
 	let containerW = $state(360);
@@ -129,6 +133,7 @@
 		start: Point;
 		active: boolean;
 		pointerId: number;
+		pointerType: string;
 	}
 	let drag = $state<DragState | null>(null);
 	let activeTarget = $state<string | null>(null);
@@ -178,19 +183,30 @@
 			dy: 0,
 			start: pointerPoint(e),
 			active: false,
-			pointerId: e.pointerId
+			pointerId: e.pointerId,
+			pointerType: e.pointerType
 		};
 		boardEl?.setPointerCapture(e.pointerId);
+	}
+
+	/** How far a dragged card is lifted above the pointer (touch only). */
+	function liftPx(): number {
+		return drag && drag.pointerType === 'touch' ? metrics.cardH * TOUCH_LIFT : 0;
 	}
 
 	function onPointerMove(e: PointerEvent) {
 		if (!drag || e.pointerId !== drag.pointerId) return;
 		const p = pointerPoint(e);
-		if (!drag.active && exceedsThreshold(drag.start, p, TAP_THRESHOLD)) drag.active = true;
+		const touch = drag.pointerType === 'touch';
+		const threshold = touch ? TAP_THRESHOLD_TOUCH : TAP_THRESHOLD;
+		if (!drag.active && exceedsThreshold(drag.start, p, threshold)) drag.active = true;
 		if (!drag.active || drag.ids.length === 0) return;
 		drag.dx = p.x - drag.start.x;
 		drag.dy = p.y - drag.start.y;
-		activeTarget = pickTarget(p, targetRects(), metrics.cardW * 1.3);
+		// Aim from where the card visually sits (lifted above the finger on touch),
+		// and give touch a more forgiving drop radius.
+		const aim = { x: p.x, y: p.y - liftPx() };
+		activeTarget = pickTarget(aim, targetRects(), metrics.cardW * (touch ? 1.5 : 1.3));
 	}
 
 	function springBack(ids: string[]) {
@@ -238,7 +254,7 @@
 
 	function dragOffset(id: string): Point {
 		return drag && drag.active && drag.ids.includes(id)
-			? { x: drag.dx, y: drag.dy }
+			? { x: drag.dx, y: drag.dy - liftPx() }
 			: { x: 0, y: 0 };
 	}
 </script>
@@ -278,7 +294,9 @@
 				class:snapping={snapping.includes(pc.card.id)}
 				class:highlighted={controller.highlighted.includes(pc.card.id)}
 				data-card-id={pc.card.id}
-				style:transform="translate3d({pc.x + off.x}px, {pc.y + off.y}px, 0)"
+				style:transform="translate3d({pc.x + off.x}px, {pc.y + off.y}px, 0){dragging
+					? ' scale(1.05)'
+					: ''}"
 				style:z-index={dragging ? 1000 + pc.z : pc.z}
 			>
 				<CardView card={pc.card} w={metrics.cardW} h={metrics.cardH} lifted={!!dragging} />
@@ -293,6 +311,10 @@
 		width: 100%;
 		min-height: 100%;
 		padding: 0.75rem;
+		/* keep the board clear of a landscape notch / home indicator */
+		padding-left: max(0.75rem, env(safe-area-inset-left));
+		padding-right: max(0.75rem, env(safe-area-inset-right));
+		padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 		box-sizing: border-box;
 		touch-action: none;
 	}

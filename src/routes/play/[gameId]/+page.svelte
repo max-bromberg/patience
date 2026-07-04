@@ -488,6 +488,8 @@
 		gap: 0.5rem;
 		padding: 0.5rem 0.75rem calc(0.5rem);
 		padding-top: calc(0.5rem + env(safe-area-inset-top));
+		padding-left: max(0.75rem, env(safe-area-inset-left));
+		padding-right: max(0.75rem, env(safe-area-inset-right));
 		/* keep controls above the absolutely-positioned card layer */
 		position: relative;
 		z-index: 6000;

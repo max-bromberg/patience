@@ -2,11 +2,21 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- viewport-fit=cover is required for env(safe-area-inset-*) to be non-zero
+		     on notched iPhones (esp. in full-screen standalone mode). -->
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<meta name="text-scale" content="scale" />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-		<link rel="apple-touch-icon" href="/favicon.svg" />
 		<link rel="canonical" href="https://patience.maxbromberg.me/" />
+
+		<!-- PWA: installable, offline-capable, full-screen on the home screen. -->
+		<link rel="manifest" href="/manifest.webmanifest" />
+		<!-- iOS needs a raster apple-touch-icon (it ignores SVG for Add to Home Screen). -->
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="apple-mobile-web-app-title" content="Patience" />
 
 		<!-- SEO / social defaults (per-page <svelte:head> overrides title + description) -->
 		<meta

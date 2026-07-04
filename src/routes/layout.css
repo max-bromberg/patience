@@ -1,1 +1,34 @@
 @import 'tailwindcss';
+
+/*
+ * App-like base layer: strip the browser behaviours that make a web page feel
+ * like a web page on touch devices. Scoped globally; the game board opts into
+ * even stricter `touch-action: none` locally.
+ */
+html {
+	/* Kill double-tap-to-zoom and the 300ms tap delay, while still allowing
+	   scroll and pinch-zoom (accessibility-friendly — we don't lock scale). */
+	touch-action: manipulation;
+	/* No grey flash on tap; no iOS long-press "save image / copy" callout. */
+	-webkit-tap-highlight-color: transparent;
+	-webkit-touch-callout: none;
+	/* Don't auto-inflate font sizes on iOS rotation. */
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+	/* No rubber-band scroll chaining / pull-to-refresh past the app. */
+	overscroll-behavior: none;
+}
+
+body {
+	/* UI chrome isn't selectable text in a native app; feels more solid. Inputs
+	   re-enable selection below so fields still work. */
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+	-webkit-user-select: text;
+	user-select: text;
+}

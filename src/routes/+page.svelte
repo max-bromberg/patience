@@ -10,6 +10,7 @@
 	import CardView from '$lib/render/CardView.svelte';
 	import GameIcon from '$lib/render/GameIcon.svelte';
 	import Icon from '$lib/render/Icon.svelte';
+	import InstallButton from '$lib/render/InstallButton.svelte';
 	import StatsSheet from '$lib/render/StatsSheet.svelte';
 	import { ambience } from '$lib/render/music';
 	import { FACES } from '$lib/theme/faces';
@@ -156,6 +157,7 @@
 					<Icon name="continue" size={16} />Continue {lastGame.name}
 				</a>
 			{/if}
+			<InstallButton />
 		</div>
 
 		{#each groups as [family, metas] (family)}
@@ -357,8 +359,11 @@
 		background-blend-mode: var(--table-blend);
 		color: var(--ui-text);
 		font-family: var(--font-rounded);
-		padding: calc(1.5rem + env(safe-area-inset-top)) clamp(1.1rem, 4vw, 3rem)
-			calc(2rem + env(safe-area-inset-bottom));
+		padding-top: calc(1.5rem + env(safe-area-inset-top));
+		padding-bottom: calc(2rem + env(safe-area-inset-bottom));
+		/* keep content clear of a landscape notch too */
+		padding-left: max(clamp(1.1rem, 4vw, 3rem), env(safe-area-inset-left));
+		padding-right: max(clamp(1.1rem, 4vw, 3rem), env(safe-area-inset-right));
 		box-sizing: border-box;
 	}
 
@@ -628,7 +633,7 @@
 	.top-actions {
 		position: fixed;
 		top: calc(0.75rem + env(safe-area-inset-top));
-		right: 0.9rem;
+		right: max(0.9rem, env(safe-area-inset-right));
 		z-index: 5;
 		display: flex;
 		gap: 0.4rem;
