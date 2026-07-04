@@ -18,6 +18,9 @@ export interface CustomColors {
 
 interface SettingsData {
 	sound: boolean;
+	haptics: boolean;
+	/** Only deal solitaire hands a solver has proven winnable (casual deals only). */
+	winnable: boolean;
 	music: boolean;
 	musicVolume: number;
 	/** Ambience mood: 'auto' (matches the game) or a specific mood id. */
@@ -38,6 +41,8 @@ function defaultVibes(): Record<string, boolean> {
 class Settings {
 	#data = $state<SettingsData>({
 		sound: true,
+		haptics: true,
+		winnable: false,
 		music: true,
 		musicVolume: 0.5,
 		musicMood: 'auto',
@@ -51,6 +56,8 @@ class Settings {
 		const saved = readJSON<Partial<SettingsData>>(KEY, {});
 		this.#data = {
 			sound: saved.sound ?? true,
+			haptics: saved.haptics ?? true,
+			winnable: saved.winnable ?? false,
 			music: saved.music ?? true,
 			musicVolume:
 				typeof saved.musicVolume === 'number' && saved.musicVolume >= 0 && saved.musicVolume <= 1
@@ -89,6 +96,28 @@ class Settings {
 	}
 	toggleSound(): void {
 		this.sound = !this.#data.sound;
+	}
+
+	get haptics(): boolean {
+		return this.#data.haptics;
+	}
+	set haptics(value: boolean) {
+		this.#data = { ...this.#data, haptics: value };
+		this.#persist();
+	}
+	toggleHaptics(): void {
+		this.haptics = !this.#data.haptics;
+	}
+
+	get winnable(): boolean {
+		return this.#data.winnable;
+	}
+	set winnable(value: boolean) {
+		this.#data = { ...this.#data, winnable: value };
+		this.#persist();
+	}
+	toggleWinnable(): void {
+		this.winnable = !this.#data.winnable;
 	}
 
 	get music(): boolean {

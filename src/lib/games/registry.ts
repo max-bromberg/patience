@@ -7,12 +7,16 @@
 import type { AnyGame, Game, GameMeta } from '$lib/engine';
 import { trickCatalog } from '$lib/trick/registry';
 import { acesup } from './acesup';
+import { bakersdozen } from './bakersdozen';
+import { castle } from './castle';
+import { eightoff } from './eightoff';
 import { fortythieves } from './fortythieves';
 import { freecell } from './freecell';
 import { golf } from './golf';
 import { klondike, klondikeDraw1 } from './klondike';
 import { pyramid } from './pyramid';
 import { scorpion } from './scorpion';
+import { simpleSimon } from './simplesimon';
 import { spider1, spider2, spider4 } from './spider';
 import { tripeaks } from './tripeaks';
 import { yukon } from './yukon';
@@ -31,12 +35,16 @@ export const games: readonly AnyGame[] = [
 	toAnyGame(klondike),
 	toAnyGame(klondikeDraw1),
 	toAnyGame(freecell),
+	toAnyGame(eightoff),
 	toAnyGame(yukon),
 	toAnyGame(fortythieves),
 	toAnyGame(scorpion),
+	toAnyGame(castle),
+	toAnyGame(bakersdozen),
 	toAnyGame(spider1),
 	toAnyGame(spider2),
 	toAnyGame(spider4),
+	toAnyGame(simpleSimon),
 	toAnyGame(golf),
 	toAnyGame(tripeaks),
 	toAnyGame(pyramid),

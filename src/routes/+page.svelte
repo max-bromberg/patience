@@ -168,6 +168,9 @@
 					<Icon name="continue" size={16} />Continue {lastGame.name}
 				</a>
 			{/if}
+			<a class="qbtn" href={resolve('/ambient')}>
+				<span class="q-emoji" aria-hidden="true">🌙</span>Unwind
+			</a>
 			<InstallButton />
 		</div>
 
@@ -304,6 +307,26 @@
 						</div>
 					</section>
 
+					<section>
+						<h3>Gameplay</h3>
+						<div class="row">
+							<div class="opt-label">
+								<span class="opt-name">Winnable deals only</span>
+								<span class="opt-sub">Deal hands we've checked can be solved</span>
+							</div>
+							<button
+								class="toggle"
+								class:on={settings.winnable}
+								onclick={() => settings.toggleWinnable()}
+								role="switch"
+								aria-checked={settings.winnable}
+								aria-label="Winnable deals only"
+							>
+								<span class="knob"></span>
+							</button>
+						</div>
+					</section>
+
 					<section class="row">
 						<h3>Sound</h3>
 						<button
@@ -313,6 +336,20 @@
 							role="switch"
 							aria-checked={settings.sound}
 							aria-label="Sound effects"
+						>
+							<span class="knob"></span>
+						</button>
+					</section>
+
+					<section class="row">
+						<h3>Haptics</h3>
+						<button
+							class="toggle"
+							class:on={settings.haptics}
+							onclick={() => settings.toggleHaptics()}
+							role="switch"
+							aria-checked={settings.haptics}
+							aria-label="Haptic feedback"
 						>
 							<span class="knob"></span>
 						</button>
@@ -937,9 +974,28 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		gap: 0.75rem;
 	}
 	.row h3 {
 		margin: 0;
+	}
+	.q-emoji {
+		font-size: 1rem;
+		line-height: 1;
+	}
+	.opt-label {
+		display: grid;
+		gap: 0.1rem;
+		min-width: 0;
+	}
+	.opt-name {
+		font-size: 0.9rem;
+		font-weight: 700;
+	}
+	.opt-sub {
+		font-size: 0.75rem;
+		color: #6a6a72;
+		line-height: 1.25;
 	}
 	.toggle {
 		width: 3.2rem;

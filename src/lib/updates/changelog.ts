@@ -24,6 +24,29 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
 	{
+		version: '1.7.0',
+		date: '2026-07-04',
+		title: 'Four new games, winnable deals & a place to unwind',
+		changes: [
+			{
+				kind: 'added',
+				text: 'Four new solitaires: Eight Off, Beleaguered Castle, Baker’s Dozen, and Simple Simon.'
+			},
+			{
+				kind: 'added',
+				text: '“Winnable deals only” (Settings → Gameplay): for FreeCell, Golf, TriPeaks and Pyramid, we quietly check a deal can actually be solved before handing it to you.'
+			},
+			{
+				kind: 'added',
+				text: 'Unwind — a calm, no-game ambient mode that drifts through the soundtrack with soft visuals. Find it on the home screen.'
+			},
+			{
+				kind: 'added',
+				text: 'Gentle haptics on supported phones: a soft tap as cards land and a little flourish on a win. Toggle in Settings.'
+			}
+		]
+	},
+	{
 		version: '1.6.1',
 		date: '2026-07-04',
 		title: 'Smoother music transitions',

@@ -1,16 +1,18 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { dateKey, previousKey } from '$lib/daily';
 	import { getGame } from '$lib/games/registry';
 	import { resolveMood } from '$lib/audio/resolve';
 	import { GameController, Icon, Table } from '$lib/render';
+	import { pickWinnableSeed, supportsWinnable } from '$lib/games/winnable';
 	import { ambience } from '$lib/render/music';
 	import Confetti from '$lib/render/Confetti.svelte';
 	import ShareButton from '$lib/render/ShareButton.svelte';
 	import { buildShareText, SITE } from '$lib/share';
 	import { sfx } from '$lib/render/sound';
+	import { haptics } from '$lib/render/haptics';
 	import { achievements } from '$lib/storage/achievements.svelte';
 	import { daily } from '$lib/storage/daily.svelte';
 	import { clearProgress, loadProgress, saveProgress } from '$lib/storage/resume';
@@ -46,6 +48,20 @@
 		return Math.floor(Math.random() * 0x7fffffff);
 	}
 
+	// "Winnable deals only": when the setting is on and this game has a solver,
+	// search forward from a random seed for one proven winnable, else fall back to
+	// it. Solitaire casual/new deals only — never a shared `?seed=` or the daily.
+	// Read the setting untracked so flipping it never redeals the current hand.
+	function solitaireSeed(): number {
+		const requested = freshSeed();
+		return untrack(() => {
+			if (settings.winnable && game && supportsWinnable(game.definition.meta.id)) {
+				return pickWinnableSeed(game, requested).seed;
+			}
+			return requested;
+		});
+	}
+
 	// Controller for the current game. A `?seed=` always deals that exact seed;
 	// otherwise resume the saved casual game for this id, or deal fresh.
 	let controller = $derived.by(() => {
@@ -59,7 +75,7 @@
 				clearProgress(gameId);
 			}
 		}
-		return new GameController(game, freshSeed());
+		return new GameController(game, solitaireSeed());
 	});
 
 	// Trick-taking controllers. Recreated only when the game id or url seed
@@ -200,6 +216,7 @@
 		if (won && !celebrated) {
 			celebrated = true;
 			sfx.win();
+			haptics.win();
 			if (isDaily && controller && controller.seed === urlSeed) {
 				const now = new Date();
 				daily.complete(dateKey(now), previousKey(now));
@@ -282,10 +299,9 @@
 
 	/** Deal a fresh game for whichever controller is active. */
 	function newDealActive() {
-		const seed = freshSeed();
-		if (controller) controller.newDeal(seed);
-		else if (euchre) euchre.newDeal(seed);
-		else if (aiGame) aiGame.newDeal(seed);
+		if (controller) controller.newDeal(solitaireSeed());
+		else if (euchre) euchre.newDeal(freshSeed());
+		else if (aiGame) aiGame.newDeal(freshSeed());
 	}
 
 	// Keyboard shortcuts: N = new deal (any game), U = undo (solitaire only).
@@ -353,7 +369,7 @@
 				</button>
 				<button
 					class="tool"
-					onclick={() => controller.newDeal(freshSeed())}
+					onclick={() => controller.newDeal(solitaireSeed())}
 					aria-label="New deal"
 					title="New deal"
 				>
@@ -434,7 +450,7 @@
 						{#if solShareText}
 							<ShareButton text={solShareText} variant="light" />
 						{/if}
-						<button class="btn primary" onclick={() => controller.newDeal(freshSeed())}>
+						<button class="btn primary" onclick={() => controller.newDeal(solitaireSeed())}>
 							Play again
 						</button>
 					</div>
@@ -449,7 +465,8 @@
 				<button class="btn" onclick={() => controller.undo()} disabled={!controller.canUndo}>
 					Undo
 				</button>
-				<button class="btn primary" onclick={() => controller.newDeal(freshSeed())}>New deal</button
+				<button class="btn primary" onclick={() => controller.newDeal(solitaireSeed())}
+					>New deal</button
 				>
 			</div>
 		{/if}

@@ -16,6 +16,7 @@ import {
 	type TableLayout
 } from '$lib/engine';
 import { autoFinishWins } from './autofinish';
+import { haptics } from './haptics';
 import { sfx } from './sound';
 
 /**
@@ -154,8 +155,13 @@ export class GameController<S, M> {
 		if (move === null) return false;
 		this.session.apply(move);
 		this.sync();
-		if (toPileId.startsWith('foundation')) sfx.foundation();
-		else sfx.place();
+		if (toPileId.startsWith('foundation')) {
+			sfx.foundation();
+			haptics.foundation();
+		} else {
+			sfx.place();
+			haptics.place();
+		}
 		return true;
 	}
 
@@ -166,6 +172,7 @@ export class GameController<S, M> {
 		this.session.apply(move);
 		this.sync();
 		sfx.draw();
+		haptics.tap();
 		return true;
 	}
 
@@ -176,6 +183,7 @@ export class GameController<S, M> {
 		this.session.apply(move);
 		this.sync();
 		sfx.foundation(); // auto-moves send a card home to a foundation
+		haptics.foundation();
 		return true;
 	}
 
@@ -196,6 +204,7 @@ export class GameController<S, M> {
 		this.session.undo();
 		this.sync();
 		sfx.flip();
+		haptics.undo();
 	}
 
 	newDeal(seed?: number): void {
