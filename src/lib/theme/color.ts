@@ -48,3 +48,13 @@ export function shade(hex: string, amount: number): string {
 export function isHexColor(hex: string): boolean {
 	return parseHex(hex) !== null;
 }
+
+/**
+ * Perceived brightness in [0, 1] (Rec. 601 luma). Above ~0.65 a color reads as
+ * "light" — dark ink/UI belongs on top of it. Unparseable input reads as dark.
+ */
+export function luminance(hex: string): number {
+	const rgb = parseHex(hex);
+	if (!rgb) return 0;
+	return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+}

@@ -1,3 +1,5 @@
+import { luminance } from './color';
+
 /** Available felt themes. `id` maps to a `data-theme` value in theme.css. */
 export interface ThemeOption {
 	readonly id: string;
@@ -27,4 +29,16 @@ export const DEFAULT_THEME = 'felt';
 
 export function isTheme(id: string): boolean {
 	return THEMES.some((t) => t.id === id);
+}
+
+/** Preset themes with a light felt (dark ink UI). Custom is judged by luminance. */
+const LIGHT_THEMES = new Set(['cloudtop', 'buttercream']);
+
+/**
+ * Whether the active theme reads as "light" — used to pick a readable iOS
+ * status-bar style (dark text on light themes, light text on dark ones).
+ */
+export function isLightTheme(theme: string, customFelt?: string): boolean {
+	if (theme === 'custom') return customFelt ? luminance(customFelt) > 0.65 : false;
+	return LIGHT_THEMES.has(theme);
 }

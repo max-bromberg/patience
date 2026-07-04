@@ -7,6 +7,7 @@
 	import VibeLayer from '$lib/render/VibeLayer.svelte';
 	import { ambience } from '$lib/render/music';
 	import { shade } from '$lib/theme/color';
+	import { isLightTheme } from '$lib/theme/themes';
 	import { settings } from '$lib/storage/settings.svelte';
 
 	let { children } = $props();
@@ -64,6 +65,14 @@
 			}
 			meta.setAttribute('content', themeColor);
 		}
+
+		// Keep the iOS status-bar style readable against the felt. (iOS only
+		// re-reads this at launch — app.html sets it pre-paint — but we mirror
+		// changes here so the DOM stays correct and other platforms follow along.)
+		const light = isLightTheme(settings.theme, settings.custom.felt);
+		document
+			.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+			?.setAttribute('content', light ? 'default' : 'black-translucent');
 	});
 </script>
 

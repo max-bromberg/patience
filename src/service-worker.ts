@@ -12,6 +12,15 @@
  * cached app shell, which then boots the router for the requested route.
  *
  * SvelteKit auto-registers this file in production builds.
+ *
+ * Auto-update model: every deploy changes `version` and the hashed asset list,
+ * so the browser sees a byte-different service-worker.js and installs it in the
+ * background (precaching the new version). We deliberately DON'T call
+ * skipWaiting(): the new worker waits until every tab/app window is closed, then
+ * activates on the next launch. For a Home-Screen app that means each relaunch
+ * picks up the latest version, while an in-progress session never has its
+ * assets swapped mid-flight. First install still claims the open page (below),
+ * so offline works from the very first visit.
  */
 
 import { build, files, prerendered, version } from '$service-worker';
@@ -32,7 +41,7 @@ sw.addEventListener('install', (event) => {
 			// Cache entries individually so one bad fetch can't abort the whole
 			// install (cache.addAll is all-or-nothing).
 			await Promise.allSettled(PRECACHE.map((url) => cache.add(url)));
-			await sw.skipWaiting();
+			// No skipWaiting() — see the update-model note above.
 		})()
 	);
 });
