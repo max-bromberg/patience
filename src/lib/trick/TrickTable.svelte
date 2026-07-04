@@ -326,7 +326,8 @@
 	.panel {
 		position: absolute;
 		left: 50%;
-		bottom: calc(6.5rem * var(--sc, 1));
+		/* sit clear of the hand + "You" label stacked at the bottom */
+		bottom: calc(7.5rem * var(--sc, 1));
 		transform: translateX(-50%);
 		background: rgba(0, 0, 0, 0.8);
 		color: var(--ui-text);

@@ -602,9 +602,12 @@
 		transform: translateX(-50%);
 		display: flex;
 		align-items: center;
+		justify-content: center;
+		flex-wrap: wrap;
+		max-width: calc(100vw - 1.5rem);
 		gap: 0.6rem;
 		padding: 0.6rem 0.9rem;
-		border-radius: 999px;
+		border-radius: 1.4rem;
 		background: rgba(0, 0, 0, 0.72);
 		color: var(--ui-text);
 		box-shadow: var(--card-shadow-lift);

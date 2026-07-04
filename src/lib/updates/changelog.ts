@@ -24,6 +24,33 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
 	{
+		version: '1.3.0',
+		date: '2026-07-04',
+		title: 'Polish & fixes',
+		changes: [
+			{
+				kind: 'fixed',
+				text: 'You can now recycle the stock again in Klondike and friends — tapping the empty stock (the ↻) deals the pile back over as it should.'
+			},
+			{
+				kind: 'fixed',
+				text: 'In Euchre, the status line no longer overlaps the “You” label at the bottom of the table.'
+			},
+			{
+				kind: 'fixed',
+				text: 'Euchre’s “Go alone” toggle now resets each hand, so a past choice can’t carry over.'
+			},
+			{
+				kind: 'improved',
+				text: 'Tidied up small-screen layouts: the “no moves” bar and the custom-colour pickers no longer get clipped on narrow phones.'
+			},
+			{
+				kind: 'improved',
+				text: 'You can reopen these notes any time from Settings → “What’s new”.'
+			}
+		]
+	},
+	{
 		version: '1.2.0',
 		date: '2026-07-04',
 		title: 'Achievements',

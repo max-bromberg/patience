@@ -126,7 +126,7 @@
 	// --- drag state -----------------------------------------------------------
 	interface DragState {
 		fromPileId: string;
-		cardId: string;
+		cardId: string | null;
 		ids: string[];
 		dx: number;
 		dy: number;
@@ -141,7 +141,7 @@
 	// non-reactive: only read inside pointer handlers, never the template
 	let targets = new Set<string>();
 
-	let lastTapId = '';
+	let lastTapId: string | null = '';
 	let lastTapAt = 0;
 
 	function targetRects(): TargetRect[] {
@@ -168,7 +168,31 @@
 		if (e.button != null && e.button !== 0) return;
 		const el = (e.target as HTMLElement | null)?.closest('[data-card-id]') as HTMLElement | null;
 		const cardId = el?.dataset.cardId;
-		if (!cardId) return;
+		if (!cardId) {
+			// Tap on an empty pile slot — e.g. recycling the stock once it's emptied
+			// (the '↻' placeholder). There's no run to drag; pointer-up turns a
+			// stationary press here into a pile tap so controller.tap can act on it.
+			const slot = (e.target as HTMLElement | null)?.closest(
+				'[data-pile-id]'
+			) as HTMLElement | null;
+			const pileId = slot?.dataset.pileId;
+			if (!pileId) return;
+			activeTarget = null;
+			targets = new Set();
+			drag = {
+				fromPileId: pileId,
+				cardId: null,
+				ids: [],
+				dx: 0,
+				dy: 0,
+				start: pointerPoint(e),
+				active: false,
+				pointerId: e.pointerId,
+				pointerType: e.pointerType
+			};
+			boardEl?.setPointerCapture(e.pointerId);
+			return;
+		}
 		const pc = positioned.find((p) => p.card.id === cardId);
 		if (!pc) return;
 		const run = controller.grab(pc.pileId, pc.card.id);
@@ -222,7 +246,8 @@
 		boardEl?.releasePointerCapture?.(e.pointerId);
 
 		if (d.active && d.ids.length > 0) {
-			const dropped = activeTarget && controller.drop(d.fromPileId, d.cardId, activeTarget);
+			// ids > 0 only for a real card grab, so cardId is set here.
+			const dropped = activeTarget && controller.drop(d.fromPileId, d.cardId!, activeTarget);
 			if (!dropped) {
 				springBack(d.ids);
 				sfx.invalid();

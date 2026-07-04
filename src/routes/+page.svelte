@@ -13,6 +13,7 @@
 	import InstallButton from '$lib/render/InstallButton.svelte';
 	import StatsSheet from '$lib/render/StatsSheet.svelte';
 	import { ambience } from '$lib/render/music';
+	import { releaseNotes } from '$lib/updates/notes.svelte';
 	import { FACES } from '$lib/theme/faces';
 	import { THEMES } from '$lib/theme/themes';
 	import { VIBES } from '$lib/theme/vibes';
@@ -341,6 +342,15 @@
 				</div>
 
 				<div class="sheet-actions">
+					<button
+						class="whatsnew-link"
+						onclick={() => {
+							showSettings = false;
+							releaseNotes.openLatest();
+						}}
+					>
+						What's new
+					</button>
 					<button class="done" onclick={() => (showSettings = false)}>Done</button>
 				</div>
 			</div>
@@ -773,6 +783,7 @@
 
 	.custom-colors {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 1.25rem;
 		margin-top: 0.9rem;
 	}
@@ -890,10 +901,28 @@
 	}
 	.sheet-actions {
 		display: flex;
-		justify-content: flex-end;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
 		flex: none;
 		padding-top: 0.8rem;
 		border-top: 1px solid rgba(0, 0, 0, 0.08);
+	}
+	.whatsnew-link {
+		font-family: inherit;
+		background: none;
+		border: none;
+		color: var(--card-ink-black);
+		opacity: 0.7;
+		font-size: 0.85rem;
+		font-weight: 600;
+		cursor: pointer;
+		padding: 0.5rem 0.2rem;
+		text-decoration: underline;
+		text-underline-offset: 0.15em;
+	}
+	.whatsnew-link:hover {
+		opacity: 1;
 	}
 	.done {
 		font-family: inherit;

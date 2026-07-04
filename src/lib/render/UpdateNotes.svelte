@@ -6,24 +6,19 @@
 	 * "Got it" button, a backdrop tap, or Escape.
 	 */
 	import { onMount } from 'svelte';
-	import type { ChangeKind, Release } from '$lib/updates/changelog';
-	import { markSeen, pendingReleases } from '$lib/updates/updates';
+	import type { ChangeKind } from '$lib/updates/changelog';
+	import { releaseNotes } from '$lib/updates/notes.svelte';
 
-	let releases = $state<Release[]>([]);
-	let show = $state(false);
+	const releases = $derived(releaseNotes.releases);
+	const show = $derived(releaseNotes.open);
 
 	onMount(() => {
-		const pending = pendingReleases();
-		if (pending.length === 0) return;
-		releases = pending;
-		show = true;
-		// Mark seen as soon as it's shown, so it appears exactly once — closing the
-		// app without tapping a button won't make it nag again next launch.
-		markSeen();
+		// Auto-show any releases newer than the player's last-seen version.
+		releaseNotes.openPending();
 	});
 
 	function dismiss() {
-		show = false;
+		releaseNotes.close();
 	}
 
 	const TAG: Record<ChangeKind, string> = { added: 'New', improved: 'Improved', fixed: 'Fixed' };

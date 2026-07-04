@@ -34,6 +34,12 @@
 	const isHumanDiscard = $derived(s.phase === 'discard' && s.dealer === 0);
 
 	let alone = $state(false);
+	// The "Go alone" toggle is a per-decision choice — clear it whenever it isn't
+	// the human's bidding turn so a previous hand's choice can't carry over.
+	$effect(() => {
+		const biddingTurn = s.turn === 0 && (s.phase === 'bidding1' || s.phase === 'bidding2');
+		if (!biddingTurn && alone) alone = false;
+	});
 
 	function onHandCard(card: Card) {
 		if (isHumanDiscard) controller.discard(card.id);
@@ -436,22 +442,28 @@
 		opacity: 0.45;
 	}
 
+	/* A thin status line below the hand. Kept in normal flow (not pinned to the
+	   felt's bottom) so it never collides with the "You" seat label, and
+	   ellipsized so a long message can't force horizontal overflow. */
 	.log {
-		position: absolute;
-		bottom: 0.3rem;
-		left: 50%;
-		transform: translateX(-50%);
+		flex: none;
+		width: 100%;
+		text-align: center;
+		margin-top: 0.15rem;
 		font-size: 0.7rem;
 		opacity: 0.7;
 		pointer-events: none;
 		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	/* Decision panels float above the table near the human. */
 	.panel {
 		position: absolute;
 		left: 50%;
-		bottom: calc(7rem * var(--sc, 1));
+		/* clear of the hand + "You" label + status log stacked at the bottom */
+		bottom: calc(9rem * var(--sc, 1));
 		transform: translateX(-50%);
 		background: rgba(0, 0, 0, 0.78);
 		color: var(--ui-text);
@@ -464,10 +476,11 @@
 		z-index: 10;
 		text-align: center;
 		min-width: 13rem;
+		max-width: calc(100vw - 1.5rem);
 		animation: rise 0.2s var(--ease-out);
 	}
 	.panel.slim {
-		bottom: calc(8rem * var(--sc, 1));
+		bottom: calc(9.5rem * var(--sc, 1));
 	}
 	.panel.win {
 		bottom: 40%;
