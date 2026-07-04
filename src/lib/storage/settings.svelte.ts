@@ -20,6 +20,8 @@ interface SettingsData {
 	sound: boolean;
 	music: boolean;
 	musicVolume: number;
+	/** Ambience mood: 'auto' (matches the game) or a specific mood id. */
+	musicMood: string;
 	theme: string;
 	face: string;
 	custom: CustomColors;
@@ -38,6 +40,7 @@ class Settings {
 		sound: true,
 		music: true,
 		musicVolume: 0.5,
+		musicMood: 'auto',
 		theme: DEFAULT_THEME,
 		face: DEFAULT_FACE,
 		custom: { ...DEFAULT_CUSTOM },
@@ -53,6 +56,7 @@ class Settings {
 				typeof saved.musicVolume === 'number' && saved.musicVolume >= 0 && saved.musicVolume <= 1
 					? saved.musicVolume
 					: 0.5,
+			musicMood: typeof saved.musicMood === 'string' ? saved.musicMood : 'auto',
 			theme:
 				saved.theme && (isTheme(saved.theme) || saved.theme === 'custom')
 					? saved.theme
@@ -104,6 +108,14 @@ class Settings {
 	set musicVolume(value: number) {
 		const v = Math.max(0, Math.min(1, value));
 		this.#data = { ...this.#data, musicVolume: v };
+		this.#persist();
+	}
+
+	get musicMood(): string {
+		return this.#data.musicMood;
+	}
+	set musicMood(value: string) {
+		this.#data = { ...this.#data, musicMood: value };
 		this.#persist();
 	}
 

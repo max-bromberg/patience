@@ -1,13 +1,14 @@
 /**
- * Background ambience — a warm, music-box style score. Rather than a sustained
- * drone, each bright major-key "mood" plays a flowing arpeggio of soft bell
- * tones (a celesta/glockenspiel timbre: fundamental + an octave partial) drawn
- * only from the notes of the current chord, so it always stays consonant. A
- * gentle echo gives it lush space and a quiet octave pad grounds the harmony.
- * Notes are re-struck per step (never pitch-glided), which keeps the harmony
- * clean and the texture lively instead of monotone. Moods rotate one per
- * session so it stays fresh. No audio assets; all synthesized via Web Audio,
- * SSR-safe, started only from a user gesture.
+ * Background ambience — a warm, music-box style score. Each mood plays a flowing
+ * arpeggio of soft bell tones drawn only from the notes of the current chord, so
+ * it always stays consonant. A gentle echo gives it lush space and a quiet
+ * octave pad grounds the harmony. No audio assets; all synthesized via Web
+ * Audio, SSR-safe, started only from a user gesture.
+ *
+ * The mood is chosen to fit the game you're playing (see $lib/audio/moods), can
+ * be switched live as you move between games, and adapts to how you're doing:
+ * `setIntensity` brightens and energizes the sound as you close on a win and
+ * dims it when you're stuck.
  *
  * iOS Safari needs extra care to make a synth-only graph audible:
  *  - a 1-sample silent buffer must be played *inside* the unlocking gesture,
@@ -16,113 +17,18 @@
  *  - the context must be resumed again after interruptions (tab hide, calls).
  */
 
-import { readJSON, writeJSON } from '$lib/storage/storage';
+import { LOBBY_MOOD, getMood, type Mood } from '$lib/audio/moods';
 
 type Ctor = typeof AudioContext;
-
-// Equal-temperament note → frequency, so chords can be written by name. Sharps
-// only (no flats) keeps the parser tiny; e.g. 'A#3' rather than 'Bb3'.
-const SEMITONES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-function hz(note: string): number {
-	const m = /^([A-G]#?)(\d)$/.exec(note);
-	if (!m) return 440;
-	const midi = (Number(m[2]) + 1) * 12 + SEMITONES.indexOf(m[1]);
-	return 440 * Math.pow(2, (midi - 69) / 12);
-}
-const ch = (...names: string[]): number[] => names.map(hz);
-
-interface Mood {
-	readonly name: string;
-	/** Four-note major-key voicings the arpeggio draws its notes from. */
-	readonly chords: number[][];
-	readonly stepMs: number; // time between arpeggio notes (tempo/feel)
-	readonly stepsPerChord: number; // notes played before moving to the next chord
-	readonly cutoff: number; // lowpass base (higher = brighter/airier)
-	readonly arpGain: number; // peak level of each bell pluck
-	readonly padGain: number; // level of the soft octave pad bed (0 = none)
-	readonly delayTime: number; // echo spacing (s)
-	readonly feedback: number; // echo feedback amount (0–0.5)
-}
-
-// Bright, major-key moods. The progressions are simple and uplifting; the
-// music-box arpeggio + echo carry the melody.
-const MOODS: Mood[] = [
-	{
-		// C major, lively and sunny (I–V–vi–IV …)
-		name: 'Sunbeam',
-		chords: [
-			ch('C4', 'E4', 'G4', 'C5'), // C
-			ch('G3', 'B3', 'D4', 'G4'), // G
-			ch('A3', 'C4', 'E4', 'A4'), // Am
-			ch('F3', 'A3', 'C4', 'F4'), // F
-			ch('C4', 'E4', 'G4', 'C5'), // C
-			ch('G3', 'B3', 'D4', 'G4'), // G
-			ch('F3', 'A3', 'C4', 'F4'), // F
-			ch('G3', 'B3', 'D4', 'G4') // G
-		],
-		stepMs: 300,
-		stepsPerChord: 12,
-		cutoff: 3200,
-		arpGain: 0.1,
-		padGain: 0.05,
-		delayTime: 0.3,
-		feedback: 0.26
-	},
-	{
-		// F major, soft and dreamy
-		name: 'Lagoon',
-		chords: [
-			ch('F3', 'A3', 'C4', 'F4'), // F
-			ch('C4', 'E4', 'G4', 'C5'), // C
-			ch('D3', 'F3', 'A3', 'D4'), // Dm
-			ch('A#3', 'D4', 'F4', 'A#4'), // A#(Bb)
-			ch('F3', 'A3', 'C4', 'F4'), // F
-			ch('C4', 'E4', 'G4', 'C5'), // C
-			ch('D3', 'F3', 'A3', 'D4'), // Dm
-			ch('C4', 'E4', 'G4', 'C5') // C
-		],
-		stepMs: 360,
-		stepsPerChord: 12,
-		cutoff: 2700,
-		arpGain: 0.1,
-		padGain: 0.06,
-		delayTime: 0.36,
-		feedback: 0.3
-	},
-	{
-		// D major, brightest and most playful
-		name: 'Carousel',
-		chords: [
-			ch('D4', 'F#4', 'A4', 'D5'), // D
-			ch('A3', 'C#4', 'E4', 'A4'), // A
-			ch('B3', 'D4', 'F#4', 'B4'), // Bm
-			ch('G3', 'B3', 'D4', 'G4'), // G
-			ch('D4', 'F#4', 'A4', 'D5'), // D
-			ch('A3', 'C#4', 'E4', 'A4'), // A
-			ch('G3', 'B3', 'D4', 'G4'), // G
-			ch('A3', 'C#4', 'E4', 'A4') // A
-		],
-		stepMs: 280,
-		stepsPerChord: 16,
-		cutoff: 3400,
-		arpGain: 0.1,
-		padGain: 0.05,
-		delayTime: 0.28,
-		feedback: 0.24
-	}
-];
-
-// Melodic contour: indices into the 8-note (two-octave) pool of the current
-// chord. A length coprime with the chord step counts so the figure slowly
-// evolves across the loop rather than repeating in lockstep. -1 is a rest, for
-// a little music-box phrasing.
-const ARP = [0, 2, 4, 7, 5, 3, -1];
 
 class Ambience {
 	private ctx: AudioContext | null = null;
 	private master: GainNode | null = null;
 	private filter: BiquadFilterNode | null = null;
 	private arpBus: GainNode | null = null;
+	private delayNode: DelayNode | null = null;
+	private feedbackGain: GainNode | null = null;
+	private sweepDepth: GainNode | null = null;
 	private padVoices: { osc: OscillatorNode; gain: GainNode }[] = [];
 	private lfos: OscillatorNode[] = [];
 	private graph: AudioNode[] = []; // nodes to disconnect on stop
@@ -132,20 +38,11 @@ class Ambience {
 	private arpStep = 0;
 	private pool: number[] = [];
 	private volume = 0.5;
+	private intensity = 0.5; // 0 = struggling/pensive, 1 = winning/bright
 	private running = false;
 	private boundRecovery = false;
 	private silentEl: HTMLAudioElement | null = null;
-	private mood: Mood | null = null; // chosen once per session
-
-	/** Pick a mood for this session, rotating through the set across visits. */
-	private chooseMood(): Mood {
-		if (this.mood) return this.mood;
-		const idx = readJSON<number>('music-mood', 0);
-		const safe = ((idx % MOODS.length) + MOODS.length) % MOODS.length;
-		this.mood = MOODS[safe];
-		writeJSON('music-mood', safe + 1); // next session gets the next mood
-		return this.mood;
-	}
+	private mood: Mood = getMood(LOBBY_MOOD)!;
 
 	private make(): boolean {
 		if (typeof window === 'undefined') return false;
@@ -167,6 +64,16 @@ class Ambience {
 		// bells are short/sparse, so a bit more level than a drone — with headroom
 		// kept under the echo build-up so dense passages never clip.
 		return this.volume * 0.42;
+	}
+
+	/** Effective lowpass cutoff for the current mood + intensity (brighter = winning). */
+	private effectiveCutoff(): number {
+		return this.mood.cutoff * (0.55 + 0.5 * this.intensity);
+	}
+
+	/** Melodic bus level for the current intensity (livelier = winning). */
+	private arpLevel(): number {
+		return 0.78 + 0.4 * this.intensity;
 	}
 
 	/** Play a 1-sample silent buffer to unlock audio on iOS (must be in-gesture). */
@@ -236,8 +143,7 @@ class Ambience {
 		if (!this.running || (typeof document !== 'undefined' && document.hidden)) return;
 		if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume();
 		if (this.silentEl && this.silentEl.paused) void this.silentEl.play().catch(() => {});
-		if (this.timer === null && this.mood)
-			this.timer = setInterval(() => this.tick(), this.mood.stepMs);
+		if (this.timer === null) this.timer = setInterval(() => this.tick(), this.mood.stepMs);
 	}
 
 	/** Two octaves of the chord's notes, ascending — the arpeggio's note pool. */
@@ -248,7 +154,7 @@ class Ambience {
 	start(): void {
 		if (this.running || !this.make()) return;
 		const ac = this.ctx!;
-		const mood = this.chooseMood();
+		const mood = this.mood;
 		void ac.resume();
 		this.unlock(ac);
 		this.playSilentLoop();
@@ -263,7 +169,7 @@ class Ambience {
 
 		const filter = ac.createBiquadFilter();
 		filter.type = 'lowpass';
-		filter.frequency.value = mood.cutoff;
+		filter.frequency.value = this.effectiveCutoff();
 		filter.Q.value = 0.4;
 		filter.connect(master);
 
@@ -282,13 +188,15 @@ class Ambience {
 
 		// Everything melodic feeds this bus → dry into the filter and into the echo.
 		const arpBus = ac.createGain();
-		arpBus.gain.value = 1;
+		arpBus.gain.value = this.arpLevel();
 		arpBus.connect(filter);
 		arpBus.connect(delay);
 
 		this.master = master;
 		this.filter = filter;
 		this.arpBus = arpBus;
+		this.delayNode = delay;
+		this.feedbackGain = feedback;
 		this.graph = [master, filter, delay, feedback, damp, wet, arpBus];
 
 		// A very slow filter sweep adds a gentle shimmer over the loop.
@@ -300,6 +208,7 @@ class Ambience {
 		sweep.connect(sweepDepth).connect(filter.frequency);
 		sweep.start();
 		this.lfos = [sweep];
+		this.sweepDepth = sweepDepth;
 
 		this.chordIdx = 0;
 		this.chordStep = 0;
@@ -308,19 +217,67 @@ class Ambience {
 		this.timer = setInterval(() => this.tick(), mood.stepMs);
 	}
 
+	/**
+	 * Switch the active mood, ramping timbre smoothly and picking up the new chord
+	 * progression at the next step. Safe to call before start() (stored for then)
+	 * or repeatedly with the same mood (a no-op).
+	 */
+	setMood(mood: Mood): void {
+		if (mood.id === this.mood.id) return;
+		const restart = mood.stepMs !== this.mood.stepMs;
+		this.mood = mood;
+		if (!this.running || !this.ctx) return;
+		const ac = this.ctx;
+		const t = ac.currentTime;
+		// ease the new progression in from the top
+		this.chordIdx = 0;
+		this.chordStep = 0;
+		this.arpStep = 0;
+		this.pool = this.makePool(mood.chords[0]);
+		// ramp timbre to the new mood
+		if (this.filter) {
+			this.filter.frequency.cancelScheduledValues(t);
+			this.filter.frequency.setTargetAtTime(this.effectiveCutoff(), t, 0.6);
+		}
+		if (this.sweepDepth) this.sweepDepth.gain.setTargetAtTime(mood.cutoff * 0.1, t, 0.6);
+		if (this.delayNode) this.delayNode.delayTime.setTargetAtTime(mood.delayTime, t, 0.6);
+		if (this.feedbackGain) this.feedbackGain.gain.setTargetAtTime(mood.feedback, t, 0.6);
+		if (restart && this.timer !== null) {
+			clearInterval(this.timer);
+			this.timer = setInterval(() => this.tick(), mood.stepMs);
+		}
+	}
+
+	/**
+	 * Adapt the sound to how the player's doing (0 = stuck/struggling → darker and
+	 * sparser, 1 = winning → brighter and livelier). Ramps smoothly so it breathes
+	 * rather than jumps.
+	 */
+	setIntensity(v: number): void {
+		const next = Math.max(0, Math.min(1, v));
+		if (Math.abs(next - this.intensity) < 0.02) return;
+		this.intensity = next;
+		if (!this.running || !this.ctx) return;
+		const t = this.ctx.currentTime;
+		if (this.filter) this.filter.frequency.setTargetAtTime(this.effectiveCutoff(), t, 1.2);
+		if (this.arpBus) this.arpBus.gain.setTargetAtTime(this.arpLevel(), t, 1.2);
+	}
+
 	/** One arpeggio step: maybe change chord, then strike one bell note. */
 	private tick(): void {
 		const ac = this.ctx;
-		if (!ac || !this.running || !this.mood || !this.arpBus) return;
+		if (!ac || !this.running || !this.arpBus) return;
 		const mood = this.mood;
 		const t = ac.currentTime + 0.04; // tiny lookahead for clean scheduling
 
 		// At the top of each chord, swap the pad bed under the melody.
 		if (this.chordStep === 0) this.setPad(mood.chords[this.chordIdx], t);
 
-		const idx = ARP[this.arpStep % ARP.length];
+		const idx = mood.arp[this.arpStep % mood.arp.length];
 		this.arpStep++;
-		if (idx >= 0) {
+		// When struggling, thin the melody out for a more pensive feel.
+		const rest = idx < 0 || (this.intensity < 0.3 && this.arpStep % 3 === 0);
+		if (!rest) {
 			const freq = this.pool[idx % this.pool.length];
 			// a soft accent on the first note of each chord gives a gentle pulse
 			const gain = mood.arpGain * (this.chordStep === 0 ? 1.25 : 1);
@@ -346,7 +303,7 @@ class Ambience {
 		env.connect(this.arpBus);
 
 		const o1 = ac.createOscillator();
-		o1.type = 'sine';
+		o1.type = this.mood.wave;
 		o1.frequency.value = freq;
 		o1.connect(env);
 
@@ -354,7 +311,7 @@ class Ambience {
 		o2.type = 'sine';
 		o2.frequency.value = freq * 2; // octave shimmer
 		const o2g = ac.createGain();
-		o2g.gain.value = 0.32;
+		o2g.gain.value = this.mood.partial;
 		o2.connect(o2g).connect(env);
 
 		o1.start(when);
@@ -366,7 +323,7 @@ class Ambience {
 	/** Crossfade a soft two-note octave pad to ground the current chord. */
 	private setPad(chord: number[], when: number): void {
 		const ac = this.ctx;
-		if (!ac || !this.filter || !this.mood) return;
+		if (!ac || !this.filter) return;
 
 		// release the previous pad
 		for (const v of this.padVoices) {
@@ -380,7 +337,9 @@ class Ambience {
 			}
 		}
 		this.padVoices = [];
-		if (this.mood.padGain <= 0) return;
+		// pad thins out when struggling, fills in when winning
+		const padGain = this.mood.padGain * (0.45 + 0.7 * this.intensity);
+		if (padGain <= 0.001) return;
 
 		// root + its octave: pure, consonant warmth under the bells
 		const root = chord[0];
@@ -390,7 +349,7 @@ class Ambience {
 			osc.frequency.value = freq;
 			const gain = ac.createGain();
 			gain.gain.setValueAtTime(0.0001, when);
-			gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, this.mood.padGain), when + 1.6);
+			gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, padGain), when + 1.6);
 			osc.connect(gain).connect(this.filter);
 			osc.start(when);
 			this.padVoices.push({ osc, gain });
@@ -415,6 +374,9 @@ class Ambience {
 		this.lfos = [];
 		this.padVoices = [];
 		this.graph = [];
+		this.delayNode = null;
+		this.feedbackGain = null;
+		this.sweepDepth = null;
 		setTimeout(() => {
 			for (const o of oscs) {
 				try {
@@ -445,6 +407,10 @@ class Ambience {
 
 	get isRunning(): boolean {
 		return this.running;
+	}
+
+	get moodId(): string {
+		return this.mood.id;
 	}
 }
 

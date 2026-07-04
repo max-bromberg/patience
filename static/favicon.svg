@@ -1,7 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <rect x="1.5" y="1.5" width="29" height="29" rx="7" fill="#fffdf8" stroke="#1f5e40" stroke-width="2" />
-  <path
-    d="M16 25.5 C16 25.5 6 18.2 6 11.6 C6 8.4 8.4 6.4 11.1 6.4 C13.3 6.4 14.9 7.8 16 9.3 C17.1 7.8 18.7 6.4 20.9 6.4 C23.6 6.4 26 8.4 26 11.6 C26 18.2 16 25.5 16 25.5 Z"
-    fill="#c8324a"
-  />
+  <defs>
+    <radialGradient id="h" cx="38%" cy="28%" r="80%">
+      <stop offset="0%" stop-color="#ff8aa0" />
+      <stop offset="52%" stop-color="#e64d69" />
+      <stop offset="100%" stop-color="#c8324a" />
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="32" height="32" rx="7" fill="#1f5e40" />
+  <g transform="translate(4.4 4.6) scale(0.232)">
+    <path
+      d="M50 90 C 18 66, 3 47, 3 28 C 3 13.5, 14.5 3, 28 3 C 39 3, 46 11, 50 19.5 C 54 11, 61 3, 72 3 C 85.5 3, 97 13.5, 97 28 C 97 47, 82 66, 50 90 Z"
+      fill="url(#h)"
+    />
+    <ellipse cx="34" cy="27" rx="12" ry="8" fill="#fff" opacity="0.45" transform="rotate(-24 34 27)" />
+  </g>
 </svg>

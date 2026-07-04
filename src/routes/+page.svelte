@@ -12,8 +12,11 @@
 	import Icon from '$lib/render/Icon.svelte';
 	import InstallButton from '$lib/render/InstallButton.svelte';
 	import StatsSheet from '$lib/render/StatsSheet.svelte';
+	import { MOODS, isMoodUnlocked } from '$lib/audio/moods';
+	import { resolveMood } from '$lib/audio/resolve';
 	import { ambience } from '$lib/render/music';
 	import { releaseNotes } from '$lib/updates/notes.svelte';
+	import { achievements } from '$lib/storage/achievements.svelte';
 	import { FACES } from '$lib/theme/faces';
 	import { THEMES } from '$lib/theme/themes';
 	import { VIBES } from '$lib/theme/vibes';
@@ -49,6 +52,13 @@
 		if (settings.music) ambience.start();
 		else ambience.stop();
 	}
+
+	// On the home screen the ambience plays a calm "lobby" mood (or the player's
+	// chosen mood); re-resolves when the Settings pick changes.
+	$effect(() => {
+		ambience.setMood(resolveMood(undefined));
+		ambience.setIntensity(0.42);
+	});
 
 	// Group the catalog by family (e.g. 'builder') for sectioned browsing.
 	// The catalog is a build-time constant, so this is computed once.
@@ -337,6 +347,29 @@
 									}}
 								/>
 							</label>
+							<div class="moods-list">
+								<button
+									class="mood-chip"
+									class:on={settings.musicMood === 'auto'}
+									onclick={() => (settings.musicMood = 'auto')}
+									title="Match the mood to each game"
+								>
+									Auto
+								</button>
+								{#each MOODS as m (m.id)}
+									{@const unlocked = isMoodUnlocked(m, (id) => achievements.has(id))}
+									<button
+										class="mood-chip"
+										class:on={settings.musicMood === m.id}
+										class:locked={!unlocked}
+										disabled={!unlocked}
+										onclick={() => (settings.musicMood = m.id)}
+										title={m.description}
+									>
+										{#if !unlocked}<span class="lock">🔒</span>{/if}{m.name}
+									</button>
+								{/each}
+							</div>
 						{/if}
 					</section>
 				</div>
@@ -832,6 +865,41 @@
 		font-size: 0.68rem;
 		color: #6a6a72;
 		font-weight: 600;
+	}
+
+	.moods-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-top: 0.75rem;
+	}
+	.mood-chip {
+		font-family: inherit;
+		font-size: 0.8rem;
+		font-weight: 600;
+		padding: 0.35rem 0.7rem;
+		border-radius: 999px;
+		border: 1.5px solid rgba(0, 0, 0, 0.14);
+		background: #f3f1ea;
+		color: #6a6a72;
+		cursor: pointer;
+		transition:
+			background 0.15s var(--ease-out),
+			color 0.15s var(--ease-out),
+			border-color 0.15s var(--ease-out);
+	}
+	.mood-chip.on {
+		background: var(--felt-1);
+		border-color: var(--felt-1);
+		color: #fff;
+	}
+	.mood-chip.locked {
+		opacity: 0.55;
+		cursor: not-allowed;
+	}
+	.mood-chip .lock {
+		font-size: 0.7rem;
+		margin-right: 0.15rem;
 	}
 
 	.vibes-list {

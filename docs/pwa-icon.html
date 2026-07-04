@@ -16,76 +16,57 @@
 				height: 100vh;
 				display: grid;
 				place-items: center;
-				/* Matches the app's felt table gradient (theme.css --table-bg), with a
-				   gentle top light and a soft corner darkening — kept even so the icon
-				   reads cleanly at small sizes (no heavy band). */
-				background: radial-gradient(130% 130% at 50% 8%, #34875e, #1f5e40 52%, #184a32);
+				/* Felt-table green, matching the app (theme.css). */
+				background: radial-gradient(130% 130% at 50% 6%, #34875e, #1f5e40 52%, #184a32);
 			}
-			/* Card: white rounded rect bearing a red heart (an Ace of Hearts —
-			   matches the hero + sample card), tilted a hair for a playful lift. */
-			.card {
-				position: relative;
-				width: var(--card, 62%);
-				aspect-ratio: 1 / 1.4;
-				background: #fffdf8;
-				border-radius: 12%;
-				transform: rotate(-6deg);
-				box-shadow:
-					0 2.5vw 5vw rgba(0, 0, 0, 0.32),
-					inset 0 0 0 0.6vw rgba(0, 0, 0, 0.05);
-				display: grid;
-				place-items: center;
-			}
+			/* A big, plump, cute heart — the star of the icon. */
 			.heart {
-				width: 58%;
-				color: #c8324a;
-				filter: drop-shadow(0 1vw 1.5vw rgba(200, 50, 74, 0.25));
+				width: var(--heart, 74%);
+				filter: drop-shadow(0 3.5vw 4vw rgba(0, 0, 0, 0.32));
 			}
-			.pip {
-				position: absolute;
-				color: #c8324a;
-				font:
-					800 9cqw / 0.9 ui-rounded,
-					'SF Pro Rounded',
-					system-ui,
-					sans-serif;
-				text-align: center;
-			}
-			.card {
-				container-type: inline-size;
-			}
-			.pip.tl {
-				top: 6%;
-				left: 7%;
-			}
-			.pip.br {
-				bottom: 6%;
-				right: 7%;
-				transform: rotate(180deg);
-			}
-			.pip small {
-				display: block;
-				font-size: 0.8em;
+			.spark {
+				fill: #fff;
 			}
 		</style>
 	</head>
 	<body>
 		<div class="bg">
-			<div class="card">
-				<span class="pip tl">A<small>♥</small></span>
-				<svg class="heart" viewBox="0 0 32 30" aria-hidden="true">
-					<path
-						d="M16 29 C16 29 1 18.5 1 8.6 C1 3.8 4.6 0.9 8.6 0.9 C11.9 0.9 14.4 3 16 5.3 C17.6 3 20.1 0.9 23.4 0.9 C27.4 0.9 31 3.8 31 8.6 C31 18.5 16 29 16 29 Z"
-						fill="#c8324a"
-					/>
-				</svg>
-				<span class="pip br">A<small>♥</small></span>
-			</div>
+			<svg class="heart" viewBox="0 0 100 96" aria-hidden="true">
+				<defs>
+					<radialGradient id="h" cx="38%" cy="28%" r="80%">
+						<stop offset="0%" stop-color="#ff8aa0" />
+						<stop offset="52%" stop-color="#e64d69" />
+						<stop offset="100%" stop-color="#c8324a" />
+					</radialGradient>
+				</defs>
+				<!-- plump kawaii heart -->
+				<path
+					d="M50 90 C 18 66, 3 47, 3 28 C 3 13.5, 14.5 3, 28 3 C 39 3, 46 11, 50 19.5 C 54 11, 61 3, 72 3 C 85.5 3, 97 13.5, 97 28 C 97 47, 82 66, 50 90 Z"
+					fill="url(#h)"
+				/>
+				<!-- glossy highlight for the cute look -->
+				<ellipse
+					cx="34"
+					cy="27"
+					rx="13"
+					ry="9"
+					fill="#fff"
+					opacity="0.5"
+					transform="rotate(-24 34 27)"
+				/>
+				<circle cx="60" cy="24" r="3.4" fill="#fff" opacity="0.35" />
+				<!-- little sparkle -->
+				<path
+					class="spark"
+					opacity="0.9"
+					d="M80 15 l1.6 4.2 l4.2 1.6 l-4.2 1.6 l-1.6 4.2 l-1.6 -4.2 l-4.2 -1.6 l4.2 -1.6 Z"
+				/>
+			</svg>
 		</div>
 		<script>
-			// ?card=NN% sets the card width (smaller => maskable safe-zone padding).
-			const p = new URLSearchParams(location.search).get('card');
-			if (p) document.querySelector('.card').style.setProperty('--card', p);
+			// ?heart=NN% sets the heart size (smaller for the maskable safe zone).
+			const p = new URLSearchParams(location.search).get('heart');
+			if (p) document.querySelector('.heart').style.setProperty('--heart', p);
 		</script>
 	</body>
 </html>

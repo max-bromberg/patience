@@ -24,6 +24,26 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
 	{
+		version: '1.5.0',
+		date: '2026-07-04',
+		title: 'A soundtrack for every game',
+		changes: [
+			{
+				kind: 'added',
+				text: 'Each game now has its own music that fits its vibe, and the tune brightens as you close in on a win and grows quieter when you’re stuck.'
+			},
+			{
+				kind: 'added',
+				text: 'A dozen ambient moods to enjoy — five of them unlocked by earning achievements. Pick your favourite (or “Auto”) in Settings → Background music.'
+			},
+			{
+				kind: 'improved',
+				text: 'Crisper, warmer sound effects, with a little reward chime when a card lands home on a foundation.'
+			},
+			{ kind: 'improved', text: 'A cuter new app icon. ♥' }
+		]
+	},
+	{
 		version: '1.4.1',
 		date: '2026-07-04',
 		title: 'Cleaner & calmer',

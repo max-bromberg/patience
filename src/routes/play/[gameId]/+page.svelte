@@ -4,7 +4,9 @@
 	import { resolve } from '$app/paths';
 	import { dateKey, previousKey } from '$lib/daily';
 	import { getGame } from '$lib/games/registry';
+	import { resolveMood } from '$lib/audio/resolve';
 	import { GameController, Icon, Table } from '$lib/render';
+	import { ambience } from '$lib/render/music';
 	import Confetti from '$lib/render/Confetti.svelte';
 	import ShareButton from '$lib/render/ShareButton.svelte';
 	import { buildShareText, SITE } from '$lib/share';
@@ -83,6 +85,25 @@
 	});
 
 	const won = $derived(controller?.won ?? false);
+
+	// Ambience: match the mood to this game (honoring the Settings pick), and let
+	// it breathe with how the game's going — brighter as you close on a win,
+	// quieter when you're stuck.
+	$effect(() => {
+		ambience.setMood(resolveMood(gameId));
+	});
+	$effect(() => {
+		let intensity = 0.45;
+		if (controller) {
+			intensity = controller.won ? 1 : controller.stuck ? 0.12 : 0.3 + 0.6 * controller.progress;
+		} else if (euchre) {
+			intensity = euchre.state.phase === 'gameOver' ? (euchre.state.winner === 0 ? 1 : 0.15) : 0.5;
+		} else if (aiGame) {
+			const v = aiGame.view;
+			intensity = v.phase === 'gameOver' ? (v.winnerLabel?.startsWith('You') ? 1 : 0.15) : 0.5;
+		}
+		ambience.setIntensity(intensity);
+	});
 
 	const now = () => (typeof performance !== 'undefined' ? performance.now() : 0);
 

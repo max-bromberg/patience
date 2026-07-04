@@ -94,6 +94,25 @@ export class GameController<S, M> {
 	}
 
 	/**
+	 * Rough completion fraction (0–1), used to make the music respond to how the
+	 * game's going. Foundation-building games count cards home to the foundations;
+	 * clearing games (golf/tri-peaks) count cards sent to the waste. Heuristic, not
+	 * exact — it just needs to rise as you make progress.
+	 */
+	get progress(): number {
+		const piles = this.piles;
+		const total = piles.reduce((n, p) => n + p.cards.length, 0);
+		if (total === 0) return this.won ? 1 : 0;
+		const hasFoundation = piles.some((p) => p.kind === 'foundation');
+		const done = piles.reduce(
+			(n, p) =>
+				p.kind === 'foundation' || (!hasFoundation && p.kind === 'waste') ? n + p.cards.length : n,
+			0
+		);
+		return Math.min(1, done / total);
+	}
+
+	/**
 	 * True only when repeatedly sending top cards to foundations would actually
 	 * win — a cheap pure dry-run (auto-moves are monotonic, so it terminates).
 	 * This keeps the "Auto-finish" affordance to the trivially-solved endgame.
@@ -135,7 +154,8 @@ export class GameController<S, M> {
 		if (move === null) return false;
 		this.session.apply(move);
 		this.sync();
-		sfx.place();
+		if (toPileId.startsWith('foundation')) sfx.foundation();
+		else sfx.place();
 		return true;
 	}
 
@@ -155,7 +175,7 @@ export class GameController<S, M> {
 		if (move === null) return false;
 		this.session.apply(move);
 		this.sync();
-		sfx.place();
+		sfx.foundation(); // auto-moves send a card home to a foundation
 		return true;
 	}
 
