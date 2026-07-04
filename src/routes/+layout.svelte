@@ -5,6 +5,7 @@
 	import '$lib/theme/theme.css';
 	import '$lib/theme/faces.css';
 	import VibeLayer from '$lib/render/VibeLayer.svelte';
+	import UpdateNotes from '$lib/render/UpdateNotes.svelte';
 	import { ambience } from '$lib/render/music';
 	import { shade } from '$lib/theme/color';
 	import { isLightTheme } from '$lib/theme/themes';
@@ -78,3 +79,4 @@
 
 <VibeLayer />
 {@render children()}
+<UpdateNotes />
